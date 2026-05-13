@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>memoir field · sign in</title>
+<style>
+  :root {
+    --paper: #F4F4F1;
+    --paper-warm: #EFEDE5;
+    --ink: #0A0A0A;
+    --ink-90: #1a1a1a;
+    --ink-70: #3a3a3a;
+    --ink-50: #6b6b6b;
+    --ink-30: #a8a8a6;
+    --ink-20: #c9c9c5;
+    --ink-10: #e0e0db;
+    --red: #c1410f;
+    --mint: #6a8f7b;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: "Inter", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: var(--mono);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    position: relative;
+  }
+  /* fixed-position layers stay full-viewport; scroll happens inside .stage */
+
+  /* paper grain */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(rgba(80,60,30,0.04) 1px, transparent 1px),
+      radial-gradient(rgba(80,60,30,0.03) 1px, transparent 1px);
+    background-size: 3px 3px, 7px 7px;
+    background-position: 0 0, 1px 2px;
+    mix-blend-mode: multiply;
+    opacity: 0.5;
+    z-index: 1;
+  }
+  /* radial vignette */
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at center, transparent 20%, rgba(60,55,45,0.12) 90%);
+    z-index: 1;
+  }
+
+  /* ---------- topbar ---------- */
+  .top {
+    position: fixed; top: 0; left: 0; right: 0; height: 48px;
+    z-index: 10;
+    border-bottom: 1px solid var(--ink-20);
+    background: color-mix(in oklch, var(--paper) 92%, transparent);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+  .brand { display:flex; align-items:center; gap: 8px; color: var(--ink); }
+  .brand .mark {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--ink); display: inline-block;
+  }
+  .brand .dim { color: var(--ink-30); }
+  .top .right { color: var(--ink-50); display:flex; gap: 14px; align-items:center; }
+  .top .right a { color: var(--ink-70); text-decoration: none; }
+  .top .right a:hover { color: var(--ink); }
+
+  /* ---------- stage ---------- */
+  .stage {
+    position: relative; z-index: 2;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .panel-left, .panel-right { min-height: 0; max-height: 100vh; overflow-y: auto; }
+  /* slim scrollbar so it doesn't break the paper feel */
+  .panel-left::-webkit-scrollbar, .panel-right::-webkit-scrollbar { width: 6px; }
+  .panel-left::-webkit-scrollbar-thumb, .panel-right::-webkit-scrollbar-thumb { background: var(--ink-20); }
+  .panel-left, .panel-right { scrollbar-width: thin; scrollbar-color: var(--ink-20) transparent; }
+
+
+  /* left — quiet panel */
+  .panel-left {
+    position: relative;
+    padding: 92px 64px 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid var(--ink-20);
+    background: linear-gradient(180deg, var(--paper) 0%, var(--paper-warm) 100%);
+    overflow: hidden;
+  }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-50);
+    display: flex; gap: 10px; align-items: baseline;
+    margin-bottom: 32px;
+  }
+  .eyebrow .dim { color: var(--ink-30); }
+  .left-title {
+    font-family: var(--sans);
+    font-size: 64px;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+    text-transform: lowercase;
+    margin: 0 0 18px;
+    color: var(--ink);
+    max-width: 520px;
+  }
+  .left-lede {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--ink-70);
+    max-width: 420px;
+    margin: 0 0 28px;
+  }
+  .left-line {
+    font-family: var(--sans);
+    font-style: italic;
+    color: var(--ink-50);
+    font-size: 14px;
+    max-width: 380px;
+    line-height: 1.6;
+  }
+
+  /* decorative tree silhouette */
+  .silhouette {
+    position: absolute;
+    right: -40px; bottom: -20px;
+    width: 320px; height: 380px;
+    opacity: 0.16;
+    pointer-events: none;
+    transform: rotate(-2deg);
+  }
+
+  .left-foot {
+    display: flex; justify-content: space-between;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-50);
+    align-items: center;
+  }
+  .left-foot .glyph { color: var(--ink-30); }
+
+  /* right — form panel */
+  .panel-right {
+    position: relative;
+    padding: 92px 80px 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
+    background: var(--paper);
+  }
+  .form-frame {
+    max-width: 380px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .tabs {
+    display: flex;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--ink-20);
+  }
+  .tab {
+    appearance: none; background: none; border: none;
+    font: inherit;
+    padding: 10px 4px;
+    margin-right: 24px;
+    color: var(--ink-50);
+    cursor: pointer;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    position: relative;
+    transition: color 160ms;
+  }
+  .tab:hover { color: var(--ink-70); }
+  .tab.active { color: var(--ink); }
+  .tab.active::after {
+    content: ""; position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 1.5px;
+    background: var(--ink);
+  }
+
+  .form-title {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-transform: lowercase;
+    margin: 0 0 6px;
+  }
+  .form-sub {
+    color: var(--ink-50);
+    font-size: 12px;
+    margin: 0 0 28px;
+    line-height: 1.6;
+  }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-50);
+    margin-bottom: 6px;
+  }
+  .input-wrap { position: relative; }
+  .input {
+    width: 100%;
+    border: 1px solid var(--ink-20);
+    background: var(--paper);
+    padding: 11px 12px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 140ms, background 140ms;
+    border-radius: 0;
+  }
+  .input:focus { border-color: var(--ink); background: #FFFFFD; }
+  .input::placeholder { color: var(--ink-30); letter-spacing: 0.02em; }
+  .field .row { display: flex; gap: 10px; }
+  .field .row .field { flex: 1; margin-bottom: 0; }
+
+  .pw-eye {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    appearance: none; border: none; background: none;
+    color: var(--ink-50); cursor: pointer;
+    padding: 4px 8px;
+    font-size: 14px;
+  }
+  .pw-eye:hover { color: var(--ink); }
+
+  .help-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: -4px 0 18px;
+  }
+  .check {
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer;
+    color: var(--ink-70);
+    font-size: 11px;
+  }
+  .check input {
+    appearance: none;
+    width: 14px; height: 14px;
+    border: 1px solid var(--ink-30);
+    background: var(--paper);
+    margin: 0;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 140ms, background 140ms;
+  }
+  .check input:checked { background: var(--ink); border-color: var(--ink); }
+  .check input:checked::after {
+    content: "✓"; position: absolute;
+    inset: 0;
+    color: var(--paper);
+    font-size: 10px;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .link {
+    color: var(--ink-70);
+    font-size: 11px;
+    text-decoration: none;
+    cursor: pointer;
+    border-bottom: 1px solid var(--ink-20);
+    padding-bottom: 1px;
+    transition: color 140ms, border-color 140ms;
+  }
+  .link:hover { color: var(--ink); border-bottom-color: var(--ink); }
+
+  .strength {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin: 6px 0 0;
+  }
+  .strength-bar {
+    height: 2px;
+    background: var(--ink-10);
+    transition: background 200ms;
+  }
+  .strength-bar.on-1 { background: var(--red); }
+  .strength-bar.on-2 { background: #d97757; }
+  .strength-bar.on-3 { background: #b8a368; }
+  .strength-bar.on-4 { background: var(--mint); }
+  .strength-label {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-50);
+    margin-top: 6px;
+    min-height: 12px;
+  }
+
+  .btn-primary {
+    width: 100%;
+    appearance: none; border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: lowercase;
+    padding: 13px 14px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 160ms, color 160ms, transform 160ms;
+  }
+  .btn-primary:hover { background: var(--paper); color: var(--ink); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary .arrow {
+    display: inline-block;
+    margin-left: 6px;
+    transition: transform 160ms;
+  }
+  .btn-primary:hover .arrow { transform: translateX(3px); }
+
+  .or {
+    display: flex; align-items: center; gap: 12px;
+    margin: 22px 0;
+    color: var(--ink-30);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .or::before, .or::after {
+    content: ""; flex: 1; height: 1px; background: var(--ink-20);
+  }
+
+  .btn-secondary {
+    width: 100%;
+    appearance: none; border: 1px solid var(--ink-20);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+    padding: 11px 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: border-color 160ms, background 160ms;
+    margin-bottom: 8px;
+  }
+  .btn-secondary:hover { border-color: var(--ink); background: color-mix(in oklch, var(--paper) 92%, var(--ink) 8%); }
+  .btn-secondary svg { width: 14px; height: 14px; }
+
+  .guest-line {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 11px;
+    color: var(--ink-50);
+  }
+
+  .footnote {
+    margin-top: 32px;
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--ink-30);
+    text-align: center;
+    max-width: 320px;
+    margin-left: auto; margin-right: auto;
+  }
+  .footnote a { color: var(--ink-50); border-bottom: 1px solid var(--ink-20); padding-bottom:1px; text-decoration: none; }
+  .footnote a:hover { color: var(--ink); }
+
+  /* guest state */
+  .guest-card {
+    border: 1px solid var(--ink-20);
+    padding: 22px;
+    background: color-mix(in oklch, var(--paper) 95%, var(--ink) 2%);
+    margin-bottom: 14px;
+  }
+  .guest-card h4 {
+    font-family: var(--sans);
+    margin: 0 0 8px;
+    font-size: 14px; font-weight: 600;
+    letter-spacing: -0.005em;
+    text-transform: lowercase;
+  }
+  .guest-card p {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--ink-70);
+    line-height: 1.6;
+  }
+
+  /* state machines */
+  .state { display: none; }
+  .state.active { display: block; animation: state-in 320ms cubic-bezier(.2,.8,.2,1); }
+  @keyframes state-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* short viewports — tighten the top padding so the form is reachable */
+  @media (max-height: 760px) {
+    .panel-left  { padding-top: 68px; }
+    .panel-right { padding-top: 68px; padding-bottom: 32px; }
+    .left-title  { font-size: 52px; }
+  }
+  @media (max-height: 620px) {
+    .panel-right { padding-top: 56px; padding-bottom: 24px; }
+  }
+
+  /* mobile */
+  @media (max-width: 820px) {
+    body { overflow-y: auto; }
+    .stage { grid-template-columns: 1fr; height: auto; min-height: 100%; }
+    .panel-left, .panel-right { max-height: none; overflow: visible; }
+    .panel-left {
+      padding: 76px 28px 32px;
+      border-right: 0;
+      border-bottom: 1px solid var(--ink-20);
+    }
+    .left-title { font-size: 44px; }
+    .silhouette { right: -60px; bottom: -40px; width: 240px; height: 280px; opacity: 0.1; }
+    .left-foot { display: none; }
+    .panel-right { padding: 32px 24px 64px; }
+  }
+</style>
+</head>
+<body>
+
+  <header class="top">
+    <div class="brand">
+      <span class="mark"></span>
+      <span>memoir field</span>
+      <span class="dim">/</span>
+      <span style="color: var(--ink-50)" id="state-label">sign in</span>
+    </div>
+    <div class="right">
+      <a href="#" id="link-explore">explore as visitor</a>
+    </div>
+  </header>
+
+  <main class="stage">
+
+    <!-- LEFT — atmosphere -->
+    <section class="panel-left">
+      <div>
+        <div class="eyebrow">
+          <span>memoir field</span>
+          <span class="dim">/</span>
+          <span>00 — keep this field</span>
+        </div>
+        <h1 class="left-title">a quiet field, kept for you.</h1>
+        <p class="left-lede">
+          plant trees as projects, wishes, days. tie memos to their branches.
+          come back from any device, any year, and the field will be where you left it.
+        </p>
+        <p class="left-line">
+          “a field is what you walk through —<br>
+          but only if someone keeps it.”
+        </p>
+      </div>
+
+      <svg class="silhouette" viewBox="0 0 320 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g fill="none" stroke="#0A0A0A" stroke-width="2" stroke-linecap="round">
+          <!-- trunk -->
+          <path d="M160 360 Q 158 280, 162 220 Q 165 160, 158 120" />
+          <!-- main branches -->
+          <path d="M158 220 Q 130 200, 100 180 Q 80 168, 60 150" />
+          <path d="M160 200 Q 195 178, 230 168 Q 255 162, 275 152" />
+          <path d="M158 160 Q 138 140, 116 122" />
+          <path d="M161 145 Q 188 128, 210 110" />
+          <path d="M159 125 Q 145 105, 130 88" />
+          <path d="M161 122 Q 178 100, 192 80" />
+          <path d="M158 120 Q 158 96, 156 78" />
+          <!-- twigs -->
+          <path d="M100 180 Q 88 168, 78 152" />
+          <path d="M85 162 Q 76 152, 68 140" />
+          <path d="M230 168 Q 244 158, 256 142" />
+          <path d="M116 122 Q 108 110, 102 96" />
+          <path d="M210 110 Q 220 96, 226 82" />
+          <path d="M130 88 Q 124 76, 120 64" />
+          <path d="M192 80 Q 200 68, 204 54" />
+          <path d="M156 78 Q 150 62, 154 46" />
+          <path d="M156 78 Q 164 60, 168 46" />
+          <!-- a few hanging notes -->
+          <g stroke-width="1" opacity="0.85">
+            <line x1="78" y1="152" x2="78" y2="178" />
+            <rect x="69" y="178" width="18" height="22" fill="#0A0A0A" opacity="0.18" stroke="none"/>
+            <line x1="226" y1="82" x2="226" y2="108" />
+            <rect x="217" y="108" width="18" height="22" fill="#0A0A0A" opacity="0.18" stroke="none"/>
+            <line x1="156" y1="46" x2="156" y2="68" />
+            <rect x="147" y="68" width="18" height="22" fill="#0A0A0A" opacity="0.18" stroke="none"/>
+          </g>
+        </g>
+      </svg>
+
+      <div class="left-foot">
+        <span>est. 2026 · charlottesville, va</span>
+        <span class="glyph">◐</span>
+      </div>
+    </section>
+
+    <!-- RIGHT — form -->
+    <section class="panel-right">
+      <div class="form-frame">
+
+        <nav class="tabs" role="tablist">
+          <button class="tab active" data-state="signin" role="tab">sign in</button>
+          <button class="tab" data-state="signup" role="tab">create account</button>
+          <button class="tab" data-state="guest" role="tab">guest</button>
+        </nav>
+
+        <!-- SIGN IN -->
+        <div class="state active" data-state="signin">
+          <h2 class="form-title">welcome back.</h2>
+          <p class="form-sub">your field has been waiting. nothing has changed since you left.</p>
+
+          <form onsubmit="event.preventDefault()">
+            <div class="field">
+              <label>email</label>
+              <input class="input" type="email" placeholder="you@somewhere.com" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label>password</label>
+              <div class="input-wrap">
+                <input class="input" type="password" id="signin-pw" placeholder="••••••••" autocomplete="current-password" />
+                <button type="button" class="pw-eye" onclick="togglePw('signin-pw', this)" aria-label="show password">○</button>
+              </div>
+            </div>
+
+            <div class="help-row">
+              <label class="check">
+                <input type="checkbox" checked />
+                <span>keep me signed in</span>
+              </label>
+              <a class="link" onclick="setState('reset')">forgot password</a>
+            </div>
+
+            <button class="btn-primary" type="submit">enter the field<span class="arrow">→</span></button>
+
+            <div class="or">or</div>
+
+            <button type="button" class="btn-secondary">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0 0 12 23z" fill="#34A853"/><path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18A10.99 10.99 0 0 0 1 12c0 1.77.42 3.45 1.18 4.94l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" fill="#EA4335"/></svg>
+              continue with google
+            </button>
+            <button type="button" class="btn-secondary">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+              continue with apple
+            </button>
+
+            <p class="footnote">
+              new here? <a href="#" onclick="setState('signup')">create an account</a> — it takes 20 seconds.
+            </p>
+          </form>
+        </div>
+
+        <!-- SIGN UP -->
+        <div class="state" data-state="signup">
+          <h2 class="form-title">begin a field.</h2>
+          <p class="form-sub">one address. one password. that's everything. you can plant the first tree in a minute.</p>
+
+          <form onsubmit="event.preventDefault()">
+            <div class="field">
+              <label>your name</label>
+              <input class="input" type="text" placeholder="how you'd like to be addressed" autocomplete="name" />
+            </div>
+            <div class="field">
+              <label>email</label>
+              <input class="input" type="email" placeholder="you@somewhere.com" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label>password</label>
+              <div class="input-wrap">
+                <input class="input" type="password" id="signup-pw" placeholder="at least 8 characters" autocomplete="new-password" oninput="scorePw(this.value)" />
+                <button type="button" class="pw-eye" onclick="togglePw('signup-pw', this)" aria-label="show password">○</button>
+              </div>
+              <div class="strength" id="strength-bars">
+                <div class="strength-bar"></div>
+                <div class="strength-bar"></div>
+                <div class="strength-bar"></div>
+                <div class="strength-bar"></div>
+              </div>
+              <div class="strength-label" id="strength-label"></div>
+            </div>
+
+            <label class="check" style="margin: 8px 0 8px;">
+              <input type="checkbox" id="tos-check" />
+              <span style="line-height: 1.5;">
+                i'm okay with the
+                <a class="link" href="#">terms</a>
+                and the
+                <a class="link" href="#">privacy notes</a>.
+              </span>
+            </label>
+
+            <button class="btn-primary" type="submit">plant a field<span class="arrow">→</span></button>
+
+            <div class="or">or</div>
+
+            <button type="button" class="btn-secondary">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0 0 12 23z" fill="#34A853"/><path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18A10.99 10.99 0 0 0 1 12c0 1.77.42 3.45 1.18 4.94l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" fill="#EA4335"/></svg>
+              continue with google
+            </button>
+
+            <p class="footnote">
+              have an account already? <a href="#" onclick="setState('signin')">sign in</a>.
+            </p>
+          </form>
+        </div>
+
+        <!-- GUEST -->
+        <div class="state" data-state="guest">
+          <h2 class="form-title">walk through, lightly.</h2>
+          <p class="form-sub">you can wander any shared field and read freely. some keepers let visitors tie memos too.</p>
+
+          <div class="guest-card">
+            <h4>guests can do:</h4>
+            <p>walk the field · read every memo · open project notes · use the compass and search.</p>
+          </div>
+          <div class="guest-card">
+            <h4>guests cannot:</h4>
+            <p>plant new trees · keep their own field · save anything that follows them to another device.</p>
+          </div>
+
+          <button class="btn-primary" onclick="onGuestEnter()">enter as a guest<span class="arrow">→</span></button>
+
+          <p class="footnote">
+            change your mind any time. <a href="#" onclick="setState('signup')">claim a field</a> when you're ready — your guest memos can come with you.
+          </p>
+        </div>
+
+        <!-- RESET -->
+        <div class="state" data-state="reset">
+          <h2 class="form-title">a soft reset.</h2>
+          <p class="form-sub">tell us your address and we'll send a single-use link. no questions about old passwords.</p>
+
+          <form onsubmit="event.preventDefault(); setState('reset-sent')">
+            <div class="field">
+              <label>email</label>
+              <input class="input" type="email" placeholder="you@somewhere.com" autocomplete="email" />
+            </div>
+            <button class="btn-primary" type="submit">send the link<span class="arrow">→</span></button>
+            <p class="footnote">
+              remembered it? <a href="#" onclick="setState('signin')">back to sign in</a>.
+            </p>
+          </form>
+        </div>
+
+        <!-- RESET SENT -->
+        <div class="state" data-state="reset-sent">
+          <h2 class="form-title">on its way.</h2>
+          <p class="form-sub">if an account exists at that address, a link is heading to it now. it'll work for 30 minutes.</p>
+          <p class="form-sub" style="color: var(--ink-30); margin-top: -12px;">if nothing arrives in a few minutes, check the quiet folders. or <a class="link" href="#" onclick="setState('reset')">try again</a>.</p>
+          <button class="btn-primary" onclick="setState('signin')">back to sign in<span class="arrow">→</span></button>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+<script>
+  const stateLabel = document.getElementById('state-label');
+  const LABELS = {
+    signin: 'sign in',
+    signup: 'create account',
+    guest: 'guest mode',
+    reset: 'forgot password',
+    'reset-sent': 'check your mail',
+  };
+  function setState(name) {
+    document.querySelectorAll('.state').forEach(el => {
+      el.classList.toggle('active', el.dataset.state === name);
+    });
+    document.querySelectorAll('.tab').forEach(el => {
+      el.classList.toggle('active', el.dataset.state === name);
+    });
+    stateLabel.textContent = LABELS[name] || name;
+  }
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => setState(btn.dataset.state));
+  });
+
+  function togglePw(id, btn) {
+    const el = document.getElementById(id);
+    const showing = el.type === 'text';
+    el.type = showing ? 'password' : 'text';
+    btn.textContent = showing ? '○' : '●';
+  }
+
+  function scorePw(pw) {
+    const bars = document.querySelectorAll('#strength-bars .strength-bar');
+    const label = document.getElementById('strength-label');
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    if (pw.length === 0) score = 0;
+    bars.forEach((b, i) => {
+      b.className = 'strength-bar' + (i < score ? ' on-' + score : '');
+    });
+    const messages = ['', 'soft — a longer phrase would help', 'okay — add a number or a symbol', 'good — mostly there', 'firm — this will hold'];
+    label.textContent = messages[score] || '';
+  }
+
+  function onGuestEnter() {
+    // in the live app, this would forward to the field with role=guest
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    btn.innerHTML = 'opening the gate…';
+    setTimeout(() => {
+      btn.innerHTML = 'opening the gate…';
+    }, 400);
+  }
+
+  document.getElementById('link-explore').addEventListener('click', (e) => {
+    e.preventDefault();
+    setState('guest');
+  });
+</script>
+</body>
+</html>
