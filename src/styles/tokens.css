@@ -1,29 +1,36 @@
 /* mementree — design tokens
- * source: design/memoir-field.html :root vars + handoff/voice.md §10
+ * source: design/sign-in.html, design/memoir-field.html :root vars
+ *         + handoff/voice.md §10
+ *
  * any color, font, or motion value used in the app must come from here.
+ * font-family fallbacks chain into the next/font css variables set in layout.tsx.
  */
 
 :root {
   /* paper & ink — the only neutrals */
-  --paper:    #F4F4F1;
-  --paper-2:  #ECECE8;
-  --ink:      #0A0A0A;
-  --ink-90:   #1A1A1A;
-  --ink-70:   #3D3D3D;
-  --ink-50:   #6B6B6B;
-  --ink-30:   #A8A8A6;
-  --ink-20:   #C9C9C5;
-  --ink-10:   #DEDEDB;
+  --paper: #f4f4f1;
+  --paper-2: #ecece8;
+  --paper-warm: #efede5;
+  --ink: #0a0a0a;
+  --ink-90: #1a1a1a;
+  --ink-70: #3d3d3d;
+  --ink-50: #6b6b6b;
+  --ink-30: #a8a8a6;
+  --ink-20: #c9c9c5;
+  --ink-10: #dededb;
 
   /* accents — used sparingly and with intent */
-  --red:      #F74737;  /* destructive, withered */
-  --mint:     #05E9A5;  /* selection, alive, fresh memo */
+  --red: #c1410f;
+  --mint: #6a8f7b;
 
-  /* type */
-  --mono: "Source Code Pro", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  /* type — `--font-mono` and `--font-sans` come from next/font in layout.tsx */
+  --mono: var(--font-mono), 'Source Code Pro', ui-monospace, 'SF Mono', Menlo,
+    Consolas, monospace;
+  --sans: var(--font-sans), 'Inter', system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
 
-  /* motion (from existing scene transitions) */
-  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  /* motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --t-fast: 120ms;
   --t-base: 240ms;
   --t-slow: 480ms;
