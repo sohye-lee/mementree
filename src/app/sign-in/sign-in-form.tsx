@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { copy } from '@/lib/copy';
-import { initialState, sendMagicLink } from './actions';
+import { sendMagicLink } from './actions';
+import { initialState } from './state';
 import styles from './sign-in.module.css';
 
 const c = copy.signIn;

@@ -3,12 +3,9 @@
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/db/server';
 
-export type SendMagicLinkState = {
-  ok: boolean;
-  error?: 'invalidEmail' | 'sendFailed';
-};
-
-const initialState: SendMagicLinkState = { ok: false };
+// type lives in a sibling file so this 'use server' module only exports async fns.
+// (next.js 16 rule: invalid-use-server-value)
+import type { SendMagicLinkState } from './state';
 
 export async function sendMagicLink(
   _prev: SendMagicLinkState,
@@ -44,5 +41,3 @@ export async function sendMagicLink(
 
   return { ok: true };
 }
-
-export { initialState };
