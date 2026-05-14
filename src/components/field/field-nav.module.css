@@ -1,0 +1,72 @@
+.top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: color-mix(in oklch, var(--paper) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ink-20);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mark {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.brand {
+  font-weight: 600;
+}
+
+.sep {
+  color: var(--ink-30);
+}
+
+.field {
+  color: var(--ink-50);
+  text-transform: lowercase;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.signOut {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-50);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 160ms, border-color 160ms;
+}
+
+.signOut:hover {
+  color: var(--ink);
+  border-color: var(--ink-20);
+}

@@ -1,11 +1,15 @@
 import { redirect } from 'next/navigation';
-import { copy } from '@/lib/copy';
+import { FieldCanvas } from '@/components/field/field-canvas';
+import { FieldNav } from '@/components/field/field-nav';
 import { createClient } from '@/lib/db/server';
-import { signOut } from './actions';
-import styles from './page.module.css';
 
-// v1 placeholder home. once the field view is built, this page becomes the
-// keeper's field at `/[handle]/[slug]`; this `/` will redirect to that.
+// the field view — mementree's home for an authed keeper.
+// phase A: nav + empty scene + walk controls. no trees, no panels yet.
+// phase C will add field auto-creation when the keeper plants their first tree.
+
+export const metadata = {
+  title: 'mementree',
+};
 
 export default async function Home() {
   const supabase = await createClient();
@@ -24,17 +28,9 @@ export default async function Home() {
     .single();
 
   return (
-    <main className={styles.main}>
-      <p className={styles.line}>
-        {copy.home.signedInAs}{' '}
-        <span className={styles.handle}>{profile?.handle ?? '—'}</span>.
-      </p>
-      <p className={styles.subline}>the field is still being prepared.</p>
-      <form action={signOut}>
-        <button type="submit" className={styles.signOut}>
-          {copy.home.signOut}
-        </button>
-      </form>
-    </main>
+    <>
+      <FieldNav handle={profile?.handle ?? 'keeper'} />
+      <FieldCanvas />
+    </>
   );
 }
