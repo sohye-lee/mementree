@@ -69,6 +69,59 @@ export function makeGroundTexture(): THREE.CanvasTexture {
   return tex;
 }
 
+export function makeBarkTexture(): THREE.CanvasTexture {
+  const W = 256;
+  const H = 1024;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext('2d')!;
+
+  ctx.fillStyle = '#2a2826';
+  ctx.fillRect(0, 0, W, H);
+
+  // vertical streaks
+  for (let i = 0; i < 240; i++) {
+    const x = Math.random() * W;
+    const w = 0.6 + Math.random() * 2.4;
+    const v = 20 + Math.floor(Math.random() * 80);
+    ctx.fillStyle = `rgba(${v},${v - 3},${v - 6},${0.25 + Math.random() * 0.5})`;
+    ctx.fillRect(x, 0, w, H);
+  }
+
+  // horizontal short cracks
+  for (let i = 0; i < 700; i++) {
+    const x = Math.random() * W;
+    const y = Math.random() * H;
+    const len = 4 + Math.random() * 18;
+    const v = Math.floor(Math.random() * 40);
+    ctx.strokeStyle = `rgba(${v},${v},${v},${0.15 + Math.random() * 0.35})`;
+    ctx.lineWidth = 0.5 + Math.random() * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + len, y + (Math.random() - 0.5) * 2);
+    ctx.stroke();
+  }
+
+  // soft mottled patches
+  for (let i = 0; i < 60; i++) {
+    const x = Math.random() * W;
+    const y = Math.random() * H;
+    const r = 8 + Math.random() * 30;
+    const v = 30 + Math.floor(Math.random() * 60);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(${v},${v},${v - 4},${0.18 + Math.random() * 0.18})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
 export function makeVignetteTexture(): THREE.CanvasTexture {
   const W = 1024;
   const c = document.createElement('canvas');

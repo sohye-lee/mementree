@@ -1,21 +1,36 @@
 // the field's three.js scene.
-// kept framework-agnostic: takes a canvas, returns a controller with dispose().
+// kept framework-agnostic: takes a canvas + tree data, returns a controller.
 // react components mount this; they don't import three directly.
 //
-// phase A: empty scene only (paper bg, fog, ground, vignette, grid, lights, walk).
-// trees and memos arrive in later phases.
+// phase B: renders trees passed in via options. trees are positioned at (x, z)
+// and shaped from `seed`. memos, hover/click, and edits arrive in phase C.
 
 import * as THREE from 'three';
 import { createControls, type FieldControls } from './controls';
 import { makeGroundTexture, makeVignetteTexture } from './textures';
+import { createTreeFactory } from './tree-mesh';
 
 const PAPER = 0xf4f4f1;
+
+export interface SceneTree {
+  id: string;
+  x: number;
+  z: number;
+  seed: number;
+}
+
+export interface SceneOptions {
+  trees: SceneTree[];
+}
 
 export interface SceneController {
   dispose: () => void;
 }
 
-export function createScene(canvas: HTMLCanvasElement): SceneController {
+export function createScene(
+  canvas: HTMLCanvasElement,
+  options: SceneOptions,
+): SceneController {
   // renderer
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -67,7 +82,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   }
   scene.add(grid);
 
-  // lighting — lit materials so trunks have form (in later phases)
+  // lighting — lit materials so trunks have form
   const hemi = new THREE.HemisphereLight(0xffffff, 0xbab8b2, 0.85);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 0.9);
@@ -76,6 +91,16 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   const fill = new THREE.DirectionalLight(0xd9d8d2, 0.35);
   fill.position.set(-6, 4, -8);
   scene.add(fill);
+
+  // trees
+  const treeFactory = createTreeFactory();
+  const treeGroups = new Map<string, THREE.Group>();
+  for (const t of options.trees) {
+    const g = treeFactory.makeTreeMesh(t.seed);
+    g.position.set(t.x, 0, t.z);
+    scene.add(g);
+    treeGroups.set(t.id, g);
+  }
 
   // controls
   const controls = createControls(canvas);
@@ -108,6 +133,15 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
       controls.dispose();
+
+      // tree resources
+      for (const g of treeGroups.values()) {
+        treeFactory.disposeTreeGroup(g);
+      }
+      treeFactory.dispose();
+      treeGroups.clear();
+
+      // ground / vignette / grid
       groundGeo.dispose();
       groundMat.dispose();
       groundTex.dispose();
@@ -120,6 +154,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
       } else {
         gridMat.dispose();
       }
+
       renderer.dispose();
     },
   };
