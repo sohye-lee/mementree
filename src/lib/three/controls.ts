@@ -40,13 +40,12 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
   //   pos.z = 12: far enough back that the first tree (planted at (0, -2))
   //     sits at distance ~14 with comfortable margin around it, instead of
   //     filling the screen.
-  //   pitch = 0.05: ~3° upward tilt so the tree's vertical midpoint lands
-  //     at screen center rather than the trunk base. with pos.y = 1.8 and
-  //     a typical tree height of ~5m, this puts top and base symmetrically
-  //     above/below screen center.
+  //   pitch = 0.14: ~8° upward tilt. lifts the framing past the trunk-
+  //     midpoint, biasing toward the canopy where the interesting silhouette
+  //     lives. tree base sits low in frame, branches reach toward the top.
   const state: State = {
     yaw: 0,
-    pitch: 0.05,
+    pitch: 0.14,
     pos: new THREE.Vector3(0, 1.8, 12),
     keys: { w: false, a: false, s: false, d: false, shift: false },
     dragging: false,
