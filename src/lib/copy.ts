@@ -46,4 +46,70 @@ export const copy = {
     signedInAs: 'signed in as',
     signOut: 'sign out',
   },
+
+  plant: {
+    cancel: 'cancel',
+    submitting: 'planting…',
+
+    // first tree (onboarding) — only shown when the field has no mode yet
+    first: {
+      eyebrow: ['mementree', '00 — empty'],
+      title: 'an empty field.',
+      lede:
+        'before anything else, plant the first tree.\nthe kind of tree you choose shapes what this field becomes.',
+      section1: '[ 01 ] what kind of tree?',
+      section2: '[ 02 ] name the first tree',
+      submit: 'plant the first tree',
+      foot: 'you can plant more whenever. the field grows with you.',
+    },
+
+    // subsequent trees — same modal, lighter framing
+    again: {
+      // %mode% is replaced at render time
+      title: 'plant a %mode%',
+      lede:
+        'a tree is a project. once planted, the team can tie memos to its branches.',
+      submit: 'plant',
+      foot: 'tree shape is generated from the name. same name → same shape.',
+    },
+
+    // the four modes — picked once for the field, then frozen
+    modes: {
+      project: {
+        glyph: '◐',
+        name: 'a project',
+        desc: 'things you build with others. each tree is one. memos are milestones, decisions, what the team learned.',
+      },
+      wish: {
+        glyph: '✦',
+        name: 'a wish',
+        desc: "in the spirit of yoko ono's wish trees. plant one and tie wishes — yours, or anyone you invite.",
+      },
+      diary: {
+        glyph: '●',
+        name: 'a diary',
+        desc: 'one tree per month. each day a memo. walk back through the year by walking the field.',
+      },
+      note: {
+        glyph: '○',
+        name: 'a note',
+        desc: 'freeform. trees are topics, memos are scraps. for thinking, reading, collecting.',
+      },
+    },
+
+    fields: {
+      name: { label: 'name', placeholder: 'e.g. interactive editor' },
+      year: { label: 'year', placeholder: '2026' },
+      lead: { label: 'lead', placeholder: 'who tended it' },
+      brief: { label: 'brief', placeholder: 'one or two lines. what was it.' },
+    },
+
+    fab: 'plant a tree',
+
+    errors: {
+      nameRequired: 'a name, however small.',
+      modeRequired: 'pick a kind of tree.',
+      serverError: 'something held the field back. try again?',
+    },
+  },
 } as const;

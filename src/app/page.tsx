@@ -1,17 +1,18 @@
 import { redirect } from 'next/navigation';
 import { FieldCanvas } from '@/components/field/field-canvas';
+import { FieldChrome } from '@/components/field/field-chrome';
 import { FieldNav } from '@/components/field/field-nav';
 import { createClient } from '@/lib/db/server';
 import type { SceneTree } from '@/lib/three/scene';
+import type { FieldMode } from '@/types/domain';
 
 // the field view — mementree's home for an authed keeper.
 //
 // phase A: nav + empty scene + walk controls.
-// phase B: + auto-create empty field on first visit, load living trees,
-//          render their meshes.
-// phase C: tree creation modal (mode + first tree atomic), detail panel,
-//          memo composition. field auto-creation here moves into the
-//          first-tree modal flow.
+// phase B: + auto-create empty field on first visit, load living trees.
+// phase C: + plant flow (onboarding modal for first tree, FAB + modal for
+//          subsequent). field.mode is set when the first tree is planted.
+// phase D: tree selection + detail panel.
 
 export const metadata = {
   title: 'mementree',
@@ -29,7 +30,7 @@ export default async function Home() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('handle')
+    .select('handle, display_name')
     .eq('id', user.id)
     .single();
 
@@ -37,7 +38,7 @@ export default async function Home() {
   // mode is null until the first tree is planted.
   let { data: field } = await supabase
     .from('fields')
-    .select('id')
+    .select('id, mode')
     .eq('owner_id', user.id)
     .maybeSingle();
 
@@ -50,13 +51,12 @@ export default async function Home() {
         title: 'field',
         mode: null,
       })
-      .select('id')
+      .select('id, mode')
       .single();
     field = created;
   }
 
-  // load living trees for the field. withered ones stay hidden until restored
-  // (phase D will surface them in a "fallen" view).
+  // load living trees for the field. withered ones stay hidden until restored.
   let trees: SceneTree[] = [];
   if (field) {
     const { data: rows } = await supabase
@@ -74,10 +74,19 @@ export default async function Home() {
       })) ?? [];
   }
 
+  const firstTime = trees.length === 0;
+  const fieldMode = (field?.mode ?? null) as FieldMode | null;
+  const defaultLead = profile?.display_name ?? profile?.handle ?? '';
+
   return (
     <>
       <FieldNav handle={profile?.handle ?? 'keeper'} />
       <FieldCanvas trees={trees} />
+      <FieldChrome
+        firstTime={firstTime}
+        fieldMode={fieldMode}
+        defaultLead={defaultLead}
+      />
     </>
   );
 }
