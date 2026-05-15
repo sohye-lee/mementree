@@ -83,7 +83,7 @@ export const copy = {
       wish: {
         glyph: '✦',
         name: 'a wish',
-        desc: "in the spirit of yoko ono's wish trees. plant one and tie wishes — yours, or anyone you invite.",
+        desc: "plant one wish tree and tie wishes — yours, or anyone you invite.",
       },
       diary: {
         glyph: '●',
@@ -92,13 +92,13 @@ export const copy = {
       },
       note: {
         glyph: '○',
-        name: 'a note',
+        name: 'a notebook',
         desc: 'freeform. trees are topics, memos are scraps. for thinking, reading, collecting.',
       },
     },
 
     fields: {
-      name: { label: 'name', placeholder: 'e.g. interactive editor' },
+      name: { label: 'name', placeholder: 'e.g. my project' },
       year: { label: 'year', placeholder: '2026' },
       lead: { label: 'lead', placeholder: 'who tended it' },
       brief: { label: 'brief', placeholder: 'one or two lines. what was it.' },
