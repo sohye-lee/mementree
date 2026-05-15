@@ -7,10 +7,14 @@
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   display: flex;
-  align-items: center;
+  /* `safe center` falls back to `start` when content overflows the viewport,
+   * so a tall panel (e.g. mobile + first-time onboarding with 4 mode cards)
+   * stays scrollable from the top instead of getting clipped. */
+  align-items: safe center;
   justify-content: center;
   padding: 32px 16px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: veilIn 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -314,13 +318,26 @@
 
 /* mobile */
 @media (max-width: 640px) {
+  .veil {
+    padding: 16px 12px;
+  }
   .panel,
   .panel.first {
     max-width: none;
-    padding: 24px 20px 18px;
+    padding: 22px 18px 16px;
+  }
+  .panel.first {
+    padding: 28px 20px 20px;
   }
   .panel.first .title {
-    font-size: 32px;
+    font-size: 30px;
+    margin-bottom: 10px;
+  }
+  .panel.first .lede {
+    margin-bottom: 22px;
+  }
+  .panel.first .section {
+    margin-bottom: 22px;
   }
   .row {
     grid-template-columns: 1fr;
