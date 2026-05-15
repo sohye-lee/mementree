@@ -36,10 +36,18 @@ function isInputFocused(): boolean {
 }
 
 export function createControls(canvas: HTMLCanvasElement): FieldControls {
+  // initial camera framing.
+  //   pos.z = 12: far enough back that the first tree (planted at (0, -2))
+  //     sits at distance ~14 with comfortable margin around it, instead of
+  //     filling the screen.
+  //   pitch = 0.05: ~3° upward tilt so the tree's vertical midpoint lands
+  //     at screen center rather than the trunk base. with pos.y = 1.8 and
+  //     a typical tree height of ~5m, this puts top and base symmetrically
+  //     above/below screen center.
   const state: State = {
     yaw: 0,
-    pitch: -0.05,
-    pos: new THREE.Vector3(0, 1.7, 8),
+    pitch: 0.05,
+    pos: new THREE.Vector3(0, 1.8, 12),
     keys: { w: false, a: false, s: false, d: false, shift: false },
     dragging: false,
     lastX: 0,
