@@ -49,7 +49,41 @@
 .right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+
+.fallenLink {
+  position: relative;
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-50);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  padding: 4px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 160ms, border-color 160ms;
+}
+
+.fallenLink:hover {
+  color: var(--ink);
+  border-color: var(--ink-20);
+}
+
+.fallenCount {
+  font-size: 10px;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--ink-20);
+  padding: 0 5px;
+  line-height: 14px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .signOut {

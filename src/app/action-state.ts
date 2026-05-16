@@ -1,13 +1,11 @@
-// state types for the plant-tree server action.
-// kept out of actions.ts (next.js 16 disallows non-async exports there).
+// shared state types for server actions used via useActionState.
+// kept out of actions.ts since next.js 16 disallows non-async exports there.
 
 import type { FieldMode } from '@/types/domain';
 
 export type PlantTreeState = {
   ok: boolean;
   error?: 'nameRequired' | 'modeRequired' | 'serverError';
-  // when ok=true, the new tree's id is returned so the client can react
-  // (close the modal, focus the tree, toast, etc.)
   treeId?: string;
 };
 
@@ -19,3 +17,11 @@ export const ALL_MODES: readonly FieldMode[] = [
   'diary',
   'note',
 ] as const;
+
+export type TieMemoState = {
+  ok: boolean;
+  error?: 'textRequired' | 'serverError';
+  memoId?: string;
+};
+
+export const initialTieMemoState: TieMemoState = { ok: false };

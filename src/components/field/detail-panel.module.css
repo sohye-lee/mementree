@@ -35,8 +35,16 @@
   text-transform: uppercase;
   color: var(--ink-70);
   margin-bottom: 8px;
+  gap: 12px;
 }
 
+.eyebrowActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.witherBtn,
 .closeBtn {
   appearance: none;
   border: 0;
@@ -49,6 +57,10 @@
   text-transform: lowercase;
   cursor: pointer;
   transition: color 140ms;
+}
+
+.witherBtn:hover {
+  color: var(--red);
 }
 
 .closeBtn:hover {
@@ -122,7 +134,174 @@
   margin-top: 8px;
 }
 
-/* mobile — slide up from bottom as a sheet */
+.memoList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.memo {
+  border: 1px solid var(--ink-20);
+  padding: 10px 12px;
+  background: var(--paper);
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 160ms;
+}
+
+.memo:hover {
+  transform: translate(-2px, -2px);
+  border-color: var(--ink);
+}
+
+.memoHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--ink-50);
+  margin-bottom: 4px;
+  letter-spacing: 0.06em;
+}
+
+.memoBody {
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.memoFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.memoAuthor {
+  font-size: 11px;
+  color: var(--ink-50);
+}
+
+.memoFallBtn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--ink-30);
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 140ms;
+}
+
+.memoFallBtn:hover {
+  color: var(--red);
+}
+
+/* foot — composer */
+.foot {
+  border-top: 1px solid var(--ink-20);
+  padding: 12px 20px 16px;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.composerLabel {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-50);
+  margin-bottom: 4px;
+}
+
+.composerRow {
+  display: flex;
+  gap: 8px;
+}
+
+.composerInput,
+.composerTextarea {
+  width: 100%;
+  border: 1px solid var(--ink-20);
+  background: var(--paper);
+  padding: 8px 10px;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink);
+  outline: none;
+  border-radius: 0;
+  transition: border-color 140ms, background 140ms;
+}
+
+.composerInput::placeholder,
+.composerTextarea::placeholder {
+  color: var(--ink-30);
+}
+
+.composerInput:focus,
+.composerTextarea:focus {
+  border-color: var(--ink);
+  background: #fffffd;
+}
+
+.composerTextarea {
+  resize: vertical;
+  min-height: 56px;
+  line-height: 1.5;
+}
+
+.composerFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.composerCount {
+  font-size: 10px;
+  color: var(--ink-50);
+}
+
+.composerSubmit {
+  appearance: none;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background 160ms, color 160ms;
+}
+
+.composerSubmit:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.composerSubmit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.composerError {
+  font-size: 10.5px;
+  color: var(--red);
+  margin-top: -2px;
+}
+
+/* mobile — bottom sheet */
 @media (max-width: 760px) {
   .panel {
     top: auto;
@@ -131,11 +310,10 @@
     bottom: 0;
     width: 100%;
     height: 70vh;
-    max-height: 80vh;
+    max-height: 85vh;
     border-left: 0;
     border-top: 1px solid var(--ink-20);
     transform: translateY(100%);
-    /* a small grip bar at the top, purely visual */
     box-shadow: 0 -8px 24px -16px rgba(10, 10, 10, 0.18);
   }
   .panel.open {
@@ -151,6 +329,7 @@
     background: var(--ink-20);
     border-radius: 2px;
     transform: translateX(-50%);
+    z-index: 1;
   }
   .head {
     padding: 22px 16px 14px;
@@ -159,6 +338,9 @@
     font-size: 20px;
   }
   .body {
-    padding: 12px 16px 24px;
+    padding: 12px 16px 18px;
+  }
+  .foot {
+    padding: 12px 16px 16px;
   }
 }

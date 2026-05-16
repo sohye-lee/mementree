@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { plantTree } from '@/app/actions';
-import { ALL_MODES, initialPlantState } from '@/app/plant-state';
+import { ALL_MODES, initialPlantState } from '@/app/action-state';
 import { copy } from '@/lib/copy';
 import type { FieldMode } from '@/types/domain';
 import styles from './plant-modal.module.css';

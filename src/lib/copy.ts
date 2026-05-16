@@ -114,9 +114,6 @@ export const copy = {
   },
 
   detail: {
-    // eyebrow shows "{ord:02} · {modeWord}"
-    // a few mode words are spelled differently here than in the planting modal
-    // (e.g. 'note' → 'notebook') to match the singular-noun feel of the eyebrow.
     modeWord: {
       project: 'project',
       wish: 'wish',
@@ -130,5 +127,50 @@ export const copy = {
     memosEmpty: 'nothing tied here yet.',
     descPlaceholder: '—',
     closeLabel: 'close',
+    witherButton: '↓ wither',
+    letMemoFall: '↓ let fall',
+    anon: 'anon',
+
+    composer: {
+      title: '+ tie a memo to this tree',
+      authorPlaceholder: 'your name',
+      textPlaceholder:
+        'what we did, what we learned, what we wished — keep it small.',
+      submit: 'tie memo',
+      submitting: 'tying…',
+      charsRemaining: 'chars',
+      errors: {
+        textRequired: 'a few words at least.',
+        serverError: 'the field paused. try again.',
+      },
+    },
+  },
+
+  confirm: {
+    witherTree: {
+      title: 'let this tree go?',
+      body: "the tree withers in place. memos drift to the ground. you have thirty days to lift it back up — after that, it returns to the field as soil.",
+      cancel: 'keep it',
+      confirm: 'let it fall',
+    },
+    letMemoFall: {
+      title: 'let this memo fall?',
+      body: "it'll rest in recently fallen for thirty days. lift it back up before then, or it turns to soil.",
+      cancel: 'keep it',
+      confirm: 'let it fall',
+    },
+  },
+
+  fallen: {
+    navLabel: '↓ fallen',
+    eyebrow: 'recently fallen',
+    title: "what's been let go.",
+    sub: 'memos drift to the ground. trees wither in place. anything here can be brought back within thirty days, then it returns to the field as soil.',
+    closeLabel: 'close',
+    empty:
+      "nothing fallen yet.\nwhen you let a tree wither or a memo fall, it rests here for thirty days.",
+    kindTree: 'tree',
+    kindMemo: 'memo',
+    actionRestore: '↑ lift back up',
   },
 } as const;

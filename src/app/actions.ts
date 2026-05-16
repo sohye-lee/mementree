@@ -5,13 +5,17 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/db/server';
 import { hashStr } from '@/lib/seed';
 import type { FieldMode } from '@/types/domain';
-import type { PlantTreeState } from './plant-state';
+import type { PlantTreeState, TieMemoState } from './action-state';
+
+// ─── auth ────────────────────────────────────────────────────────────────────
 
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect('/sign-in');
 }
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 const VALID_MODES: readonly FieldMode[] = ['project', 'wish', 'diary', 'note'];
 
@@ -21,9 +25,7 @@ function isMode(v: unknown): v is FieldMode {
 
 // finds an open spot for a new tree. first tree always lands at (0, -2) so the
 // keeper sees it right in front. subsequent trees probe random positions in
-// ±15 units, keeping ≥4 units from any existing tree. matches the tone of the
-// original `pickPlantingSpot` (random + far-enough) without needing camera
-// state on the server.
+// ±15 units, keeping ≥4 units from any existing tree.
 function pickPosition(
   existing: { x: number; z: number }[],
 ): { x: number; z: number } {
@@ -43,18 +45,30 @@ function pickPosition(
       }
     }
     if (ok) {
-      return {
-        x: Math.round(x * 10) / 10,
-        z: Math.round(z * 10) / 10,
-      };
+      return { x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10 };
     }
   }
-  // last resort: just place somewhere; collision is unlikely after 64 tries.
   return {
     x: Math.round((Math.random() - 0.5) * 30 * 10) / 10,
     z: Math.round((Math.random() - 0.5) * 30 * 10) / 10,
   };
 }
+
+async function requireKeeperField() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: field } = await supabase
+    .from('fields')
+    .select('id, mode')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  return field ? { supabase, user, field } : null;
+}
+
+// ─── plant tree ──────────────────────────────────────────────────────────────
 
 export async function plantTree(
   _prev: PlantTreeState,
@@ -66,39 +80,15 @@ export async function plantTree(
   const briefRaw = String(formData.get('brief') ?? '').trim();
   const modeRaw = formData.get('mode');
 
-  if (!name) {
-    return { ok: false, error: 'nameRequired' };
-  }
-  if (name.length > 40) {
-    // gently truncate rather than error — keeps the moment moving.
-  }
+  if (!name) return { ok: false, error: 'nameRequired' };
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { ok: false, error: 'serverError' };
-  }
+  const ctx = await requireKeeperField();
+  if (!ctx) return { ok: false, error: 'serverError' };
+  const { supabase, user, field } = ctx;
 
-  // load the keeper's field. should always exist by the time the modal opens
-  // (page.tsx auto-creates one), but guard anyway.
-  const { data: field } = await supabase
-    .from('fields')
-    .select('id, mode')
-    .eq('owner_id', user.id)
-    .maybeSingle();
-
-  if (!field) {
-    return { ok: false, error: 'serverError' };
-  }
-
-  // first tree picks the field's mode; subsequent trees inherit it.
   const isFirst = field.mode === null;
   if (isFirst) {
-    if (!isMode(modeRaw)) {
-      return { ok: false, error: 'modeRequired' };
-    }
+    if (!isMode(modeRaw)) return { ok: false, error: 'modeRequired' };
     const { error: modeErr } = await supabase
       .from('fields')
       .update({ mode: modeRaw })
@@ -106,7 +96,6 @@ export async function plantTree(
     if (modeErr) return { ok: false, error: 'serverError' };
   }
 
-  // load existing trees for placement + ord. only living ones occupy space.
   const { data: livingRows } = await supabase
     .from('trees')
     .select('x, z, ord')
@@ -139,7 +128,6 @@ export async function plantTree(
     description: briefRaw || null,
     x: pos.x,
     z: pos.z,
-    // seed pinned to creation moment so renames don't reshape the tree
     seed: hashStr(`${name}:${Date.now()}`),
   };
 
@@ -149,10 +137,119 @@ export async function plantTree(
     .select('id')
     .single();
 
-  if (error || !inserted) {
-    return { ok: false, error: 'serverError' };
-  }
-
+  if (error || !inserted) return { ok: false, error: 'serverError' };
   revalidatePath('/');
   return { ok: true, treeId: inserted.id as string };
+}
+
+// ─── tie memo ────────────────────────────────────────────────────────────────
+
+export async function tieMemo(
+  _prev: TieMemoState,
+  formData: FormData,
+): Promise<TieMemoState> {
+  const treeId = String(formData.get('treeId') ?? '');
+  const text = String(formData.get('text') ?? '').trim();
+  const authorRaw = String(formData.get('author') ?? '').trim();
+
+  if (!text) return { ok: false, error: 'textRequired' };
+  if (!treeId) return { ok: false, error: 'serverError' };
+
+  const ctx = await requireKeeperField();
+  if (!ctx) return { ok: false, error: 'serverError' };
+  const { supabase, user } = ctx;
+
+  // confirm tree exists in keeper's field (rls helps but we want a clean error)
+  const { data: tree } = await supabase
+    .from('trees')
+    .select('id')
+    .eq('id', treeId)
+    .maybeSingle();
+  if (!tree) return { ok: false, error: 'serverError' };
+
+  const { data: tiedRows } = await supabase
+    .from('memos')
+    .select('ord')
+    .eq('tree_id', treeId)
+    .eq('state', 'tied');
+  const nextOrd =
+    Math.max(0, ...(tiedRows ?? []).map((r) => Number(r.ord) || 0)) + 1;
+
+  const profile = (
+    await supabase
+      .from('profiles')
+      .select('handle, display_name')
+      .eq('id', user.id)
+      .maybeSingle()
+  ).data;
+  const defaultAuthor = profile?.display_name ?? profile?.handle ?? '';
+
+  const memo = {
+    tree_id: treeId,
+    ord: nextOrd,
+    author: authorRaw || defaultAuthor || null,
+    text: text.slice(0, 180),
+  };
+
+  const { data: inserted, error } = await supabase
+    .from('memos')
+    .insert(memo)
+    .select('id')
+    .single();
+  if (error || !inserted) return { ok: false, error: 'serverError' };
+
+  revalidatePath('/');
+  return { ok: true, memoId: inserted.id as string };
+}
+
+// ─── soft delete + restore ───────────────────────────────────────────────────
+
+export async function witherTree(treeId: string) {
+  const ctx = await requireKeeperField();
+  if (!ctx) return;
+  const { supabase } = ctx;
+  await supabase
+    .from('trees')
+    .update({
+      state: 'withered',
+      withered_at: new Date().toISOString(),
+    })
+    .eq('id', treeId);
+  revalidatePath('/');
+}
+
+export async function liftTreeBack(treeId: string) {
+  const ctx = await requireKeeperField();
+  if (!ctx) return;
+  const { supabase } = ctx;
+  await supabase
+    .from('trees')
+    .update({ state: 'living', withered_at: null })
+    .eq('id', treeId);
+  revalidatePath('/');
+}
+
+export async function letMemoFall(memoId: string) {
+  const ctx = await requireKeeperField();
+  if (!ctx) return;
+  const { supabase } = ctx;
+  await supabase
+    .from('memos')
+    .update({
+      state: 'fallen',
+      fallen_at: new Date().toISOString(),
+    })
+    .eq('id', memoId);
+  revalidatePath('/');
+}
+
+export async function liftMemoBack(memoId: string) {
+  const ctx = await requireKeeperField();
+  if (!ctx) return;
+  const { supabase } = ctx;
+  await supabase
+    .from('memos')
+    .update({ state: 'tied', fallen_at: null })
+    .eq('id', memoId);
+  revalidatePath('/');
 }

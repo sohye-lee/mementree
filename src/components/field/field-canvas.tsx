@@ -6,23 +6,24 @@ import {
   type SceneController,
   type SceneTree,
 } from '@/lib/three/scene';
+import type { NoteInput } from '@/lib/three/note-mesh';
 import styles from './field-canvas.module.css';
-
-// react wrapper that mounts the framework-agnostic three.js scene.
-// the scene itself is created once on mount; we feed it updates via
-// imperative methods so camera + selection state survive across plants.
 
 interface Props {
   trees: SceneTree[];
+  memosByTreeId: Record<string, NoteInput[]>;
   selectedTreeId: string | null;
   onTreeClick: (id: string | null) => void;
 }
 
-export function FieldCanvas({ trees, selectedTreeId, onTreeClick }: Props) {
+export function FieldCanvas({
+  trees,
+  memosByTreeId,
+  selectedTreeId,
+  onTreeClick,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<SceneController | null>(null);
-  // hold the latest click handler in a ref so the scene can call the freshest
-  // callback without us needing to recreate it.
   const clickRef = useRef(onTreeClick);
   useEffect(() => {
     clickRef.current = onTreeClick;
@@ -43,7 +44,7 @@ export function FieldCanvas({ trees, selectedTreeId, onTreeClick }: Props) {
     };
   }, []);
 
-  // diff trees → scene. add new, remove gone.
+  // diff trees → scene
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -57,7 +58,17 @@ export function FieldCanvas({ trees, selectedTreeId, onTreeClick }: Props) {
     }
   }, [trees]);
 
-  // push selection into scene
+  // sync memos per tree
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    for (const t of trees) {
+      const memos = memosByTreeId[t.id] ?? [];
+      scene.syncMemos(t.id, memos);
+    }
+  }, [trees, memosByTreeId]);
+
+  // push selection
   useEffect(() => {
     sceneRef.current?.setActive(selectedTreeId);
   }, [selectedTreeId]);

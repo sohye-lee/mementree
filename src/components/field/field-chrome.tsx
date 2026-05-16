@@ -2,18 +2,18 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { letMemoFall, witherTree } from '@/app/actions';
 import type { FieldMode } from '@/types/domain';
+import type { NoteInput } from '@/lib/three/note-mesh';
+import type { SceneTree } from '@/lib/three/scene';
+import { ConfirmModal } from './confirm-modal';
+import { DetailPanel, type DetailMemo, type DetailTree } from './detail-panel';
+import { FallenTray, type FallenItem } from './fallen-tray';
 import { FieldCanvas } from './field-canvas';
-import { DetailPanel, type DetailTree } from './detail-panel';
+import { FieldNav } from './field-nav';
+import { HintBar } from './hint-bar';
 import { PlantFab } from './fab';
 import { PlantModal } from './plant-modal';
-import type { SceneTree } from '@/lib/three/scene';
-
-// chrome = the floating ui that sits on top of the 3d scene.
-// owns:
-//   - the plant modal (open on FAB, forced open during first-time onboarding)
-//   - the detail panel (open on tree click)
-//   - the selected tree id (passed down to the scene as well)
 
 export interface FieldTreeData extends SceneTree {
   ord: number;
@@ -21,32 +21,55 @@ export interface FieldTreeData extends SceneTree {
   year: string | null;
   lead: string | null;
   description: string | null;
+  memos: DetailMemo[];
 }
 
 interface Props {
+  handle: string;
   trees: FieldTreeData[];
+  fallen: FallenItem[];
   firstTime: boolean;
   fieldMode: FieldMode | null;
   defaultLead: string;
 }
 
+type ConfirmTarget =
+  | { kind: 'witherTree'; treeId: string }
+  | { kind: 'letMemoFall'; memoId: string }
+  | null;
+
 export function FieldChrome({
+  handle,
   trees,
+  fallen,
   firstTime,
   fieldMode,
   defaultLead,
 }: Props) {
   const [plantOpen, setPlantOpen] = useState(firstTime);
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
+  const [fallenOpen, setFallenOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   const router = useRouter();
 
-  // simplified data for the three.js scene
   const sceneTrees = useMemo<SceneTree[]>(
     () => trees.map((t) => ({ id: t.id, x: t.x, z: t.z, seed: t.seed })),
     [trees],
   );
 
-  // full data for the detail panel
+  const memosByTreeId = useMemo<Record<string, NoteInput[]>>(() => {
+    const out: Record<string, NoteInput[]> = {};
+    for (const t of trees) {
+      out[t.id] = t.memos.map((m) => ({
+        id: m.id,
+        text: m.text,
+        author: m.author,
+        createdAt: new Date(m.createdAt).getTime(),
+      }));
+    }
+    return out;
+  }, [trees]);
+
   const selectedTree = useMemo<DetailTree | null>(() => {
     if (!selectedTreeId) return null;
     const t = trees.find((x) => x.id === selectedTreeId);
@@ -61,33 +84,84 @@ export function FieldChrome({
     };
   }, [selectedTreeId, trees]);
 
+  const selectedMemos = useMemo<DetailMemo[]>(() => {
+    if (!selectedTreeId) return [];
+    const t = trees.find((x) => x.id === selectedTreeId);
+    return t?.memos ?? [];
+  }, [selectedTreeId, trees]);
+
   const handleTreeClick = useCallback((id: string | null) => {
     setSelectedTreeId(id);
   }, []);
-
   const handleClosePanel = useCallback(() => {
     setSelectedTreeId(null);
   }, []);
+  const handleRequestWither = useCallback((treeId: string) => {
+    setConfirmTarget({ kind: 'witherTree', treeId });
+  }, []);
+  const handleRequestMemoFall = useCallback((memoId: string) => {
+    setConfirmTarget({ kind: 'letMemoFall', memoId });
+  }, []);
+
+  async function handleConfirm() {
+    if (!confirmTarget) return;
+    if (confirmTarget.kind === 'witherTree') {
+      const treeId = confirmTarget.treeId;
+      setConfirmTarget(null);
+      setSelectedTreeId(null);
+      await witherTree(treeId);
+      router.refresh();
+    } else {
+      const memoId = confirmTarget.memoId;
+      setConfirmTarget(null);
+      await letMemoFall(memoId);
+      router.refresh();
+    }
+  }
 
   const panelOpen = selectedTreeId !== null;
 
   return (
     <>
+      <FieldNav
+        handle={handle}
+        fallenCount={fallen.length}
+        onFallenClick={() => setFallenOpen(true)}
+      />
+
       <FieldCanvas
         trees={sceneTrees}
+        memosByTreeId={memosByTreeId}
         selectedTreeId={selectedTreeId}
         onTreeClick={handleTreeClick}
       />
 
       <DetailPanel
         tree={selectedTree}
+        memos={selectedMemos}
         fieldMode={fieldMode}
+        defaultAuthor={defaultLead}
         onClose={handleClosePanel}
+        onRequestWither={handleRequestWither}
+        onRequestMemoFall={handleRequestMemoFall}
+      />
+
+      <FallenTray
+        open={fallenOpen}
+        items={fallen}
+        onClose={() => setFallenOpen(false)}
+      />
+
+      <ConfirmModal
+        open={confirmTarget !== null}
+        variant={confirmTarget?.kind ?? 'witherTree'}
+        onCancel={() => setConfirmTarget(null)}
+        onConfirm={handleConfirm}
       />
 
       <PlantFab
         onClick={() => setPlantOpen(true)}
-        hidden={firstTime || panelOpen}
+        hidden={firstTime || panelOpen || fallenOpen || confirmTarget !== null}
       />
 
       <PlantModal
@@ -100,6 +174,8 @@ export function FieldChrome({
           router.refresh();
         }}
       />
+
+      <HintBar />
     </>
   );
 }
