@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
-import { FieldCanvas } from '@/components/field/field-canvas';
-import { FieldChrome } from '@/components/field/field-chrome';
+import {
+  FieldChrome,
+  type FieldTreeData,
+} from '@/components/field/field-chrome';
 import { FieldNav } from '@/components/field/field-nav';
 import { createClient } from '@/lib/db/server';
-import type { SceneTree } from '@/lib/three/scene';
 import type { FieldMode } from '@/types/domain';
 
 // the field view — mementree's home for an authed keeper.
@@ -11,8 +12,8 @@ import type { FieldMode } from '@/types/domain';
 // phase A: nav + empty scene + walk controls.
 // phase B: + auto-create empty field on first visit, load living trees.
 // phase C: + plant flow (onboarding modal for first tree, FAB + modal for
-//          subsequent). field.mode is set when the first tree is planted.
-// phase D: tree selection + detail panel.
+//          subsequent).
+// phase D: + tree selection (raycast + ring color) and detail panel.
 
 export const metadata = {
   title: 'mementree',
@@ -56,12 +57,13 @@ export default async function Home() {
     field = created;
   }
 
-  // load living trees for the field. withered ones stay hidden until restored.
-  let trees: SceneTree[] = [];
+  // load living trees. detail panel needs name/year/lead/description in addition
+  // to the geometry data (x, z, seed).
+  let trees: FieldTreeData[] = [];
   if (field) {
     const { data: rows } = await supabase
       .from('trees')
-      .select('id, x, z, seed')
+      .select('id, x, z, seed, ord, name, year, lead, description')
       .eq('field_id', field.id)
       .eq('state', 'living')
       .order('ord', { ascending: true });
@@ -71,6 +73,11 @@ export default async function Home() {
         x: Number(r.x),
         z: Number(r.z),
         seed: Number(r.seed),
+        ord: Number(r.ord),
+        name: r.name as string,
+        year: (r.year as string | null) ?? null,
+        lead: (r.lead as string | null) ?? null,
+        description: (r.description as string | null) ?? null,
       })) ?? [];
   }
 
@@ -81,8 +88,8 @@ export default async function Home() {
   return (
     <>
       <FieldNav handle={profile?.handle ?? 'keeper'} />
-      <FieldCanvas trees={trees} />
       <FieldChrome
+        trees={trees}
         firstTime={firstTime}
         fieldMode={fieldMode}
         defaultLead={defaultLead}

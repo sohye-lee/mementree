@@ -5,9 +5,11 @@
 //
 // usage:
 //   const factory = createTreeFactory();
-//   const group = factory.makeTreeMesh(seed);
+//   const group = factory.makeTreeMesh(seed, treeId);
 //   scene.add(group);
+//   factory.setRingState(group, 'hover'); // 'base' | 'hover' | 'active'
 //   // later:
+//   factory.disposeTreeGroup(group);
 //   factory.dispose(); // releases shared bark texture + ring materials
 
 import * as THREE from 'three';
@@ -15,10 +17,14 @@ import { mulberry32 } from '@/lib/seed';
 import { makeBarkTexture } from './textures';
 
 const INK20 = 0xc9c9c5;
-const INK70 = 0x3d3d3d;
+const MINT = 0x6a8f7b;
+const RED = 0xc1410f;
+
+export type RingState = 'base' | 'hover' | 'active';
 
 export interface TreeFactory {
-  makeTreeMesh: (seed: number) => THREE.Group;
+  makeTreeMesh: (seed: number, treeId: string) => THREE.Group;
+  setRingState: (group: THREE.Group, state: RingState) => void;
   disposeTreeGroup: (group: THREE.Group) => void;
   dispose: () => void;
 }
@@ -31,8 +37,8 @@ export function createTreeFactory(): TreeFactory {
     transparent: true,
     opacity: 0.7,
   });
-  // referenced for type but unused in phase B (hover/active arrive in phase C):
-  void INK70;
+  const ringMatHover = new THREE.LineBasicMaterial({ color: MINT });
+  const ringMatActive = new THREE.LineBasicMaterial({ color: RED });
 
   // per-tree trunk material — color jittered from the seed.
   function trunkMaterialFor(seed: number): THREE.MeshStandardMaterial {
@@ -49,12 +55,10 @@ export function createTreeFactory(): TreeFactory {
     });
   }
 
-  function makeTreeMesh(seed: number): THREE.Group {
+  function makeTreeMesh(seed: number, treeId: string): THREE.Group {
     const rng = mulberry32(seed >>> 0);
     const group = new THREE.Group();
     const tips: THREE.Vector3[] = [];
-    // distinct material per tree so color jitters — seed is xor'd so
-    // the trunk material rng is independent of the branch rng above.
     const myTrunkMat = trunkMaterialFor(seed ^ 0x9e3779b1);
     const branchGeometries: THREE.BufferGeometry[] = [];
 
@@ -69,7 +73,6 @@ export function createTreeFactory(): TreeFactory {
 
       const r1 = Math.max(0.012, thickness * 0.7);
       const r2 = Math.max(0.014, thickness);
-      // 12 radial segs + 3 height segs to give enough geometry for a soft bend
       const geo = new THREE.CylinderGeometry(r1, r2, length, 12, 3, false);
 
       // bend the geometry to remove the perfect-cylinder feel
@@ -91,13 +94,14 @@ export function createTreeFactory(): TreeFactory {
       }
 
       const mesh = new THREE.Mesh(geo, myTrunkMat);
+      // raycast picks any branch mesh — tag with the owning tree id so the
+      // scene can route the hit back to react state.
+      mesh.userData.treeId = treeId;
       branchGeometries.push(geo);
 
-      // position at midpoint between start and end
       const mid = start.clone().add(end).multiplyScalar(0.5);
       mesh.position.copy(mid);
 
-      // orient: cylinder default axis is +Y. rotate to dir.
       const up = new THREE.Vector3(0, 1, 0);
       const q = new THREE.Quaternion().setFromUnitVectors(
         up,
@@ -107,12 +111,10 @@ export function createTreeFactory(): TreeFactory {
       group.add(mesh);
 
       if (depth <= 0) {
-        // tip — record a point a touch beyond the end for hanging notes (phase C)
         tips.push(end.clone());
         return;
       }
 
-      // 2-3 child branches — leader continues mostly straight, others diverge.
       const n = 2 + (rng() < 0.45 ? 1 : 0);
       for (let i = 0; i < n; i++) {
         const isLeader = i === 0;
@@ -140,11 +142,9 @@ export function createTreeFactory(): TreeFactory {
         const thickScale = isLeader ? 0.82 + rng() * 0.08 : 0.55 + rng() * 0.12;
         branch(end, newDir, length * lenScale, thickness * thickScale, depth - 1);
       }
-      // sometimes a tip directly off this junction
       if (rng() < 0.35) tips.push(end.clone());
     }
 
-    // trunk: slight lean
     const leanX = (rng() - 0.5) * 0.18;
     const leanZ = (rng() - 0.5) * 0.18;
     const trunkDir = new THREE.Vector3(leanX, 1, leanZ).normalize();
@@ -153,7 +153,9 @@ export function createTreeFactory(): TreeFactory {
     const depth = 6;
     branch(new THREE.Vector3(0, 0, 0), trunkDir, trunkLen, trunkThick, depth);
 
-    // base ring (status indicator on the ground — base/hover/active in phase C)
+    // base ring — material is swapped by setRingState. ring itself is also
+    // a pickable target (treeId tag) so clicking the ring counts as clicking
+    // the tree even when the trunk is occluded by closer geometry.
     const ringPts: THREE.Vector3[] = [];
     const R = 0.85;
     for (let i = 0; i <= 64; i++) {
@@ -162,6 +164,7 @@ export function createTreeFactory(): TreeFactory {
     }
     const ringGeo = new THREE.BufferGeometry().setFromPoints(ringPts);
     const ring = new THREE.LineLoop(ringGeo, ringMatBase);
+    ring.userData.treeId = treeId;
     group.add(ring);
 
     group.userData.ring = ring;
@@ -169,8 +172,20 @@ export function createTreeFactory(): TreeFactory {
     group.userData.trunkMat = myTrunkMat;
     group.userData.branchGeos = branchGeometries;
     group.userData.ringGeo = ringGeo;
+    group.userData.treeId = treeId;
 
     return group;
+  }
+
+  function setRingState(group: THREE.Group, state: RingState) {
+    const ring = group.userData.ring as THREE.LineLoop | undefined;
+    if (!ring) return;
+    ring.material =
+      state === 'active'
+        ? ringMatActive
+        : state === 'hover'
+          ? ringMatHover
+          : ringMatBase;
   }
 
   function disposeTreeGroup(group: THREE.Group) {
@@ -183,7 +198,9 @@ export function createTreeFactory(): TreeFactory {
   function dispose() {
     barkTex.dispose();
     ringMatBase.dispose();
+    ringMatHover.dispose();
+    ringMatActive.dispose();
   }
 
-  return { makeTreeMesh, disposeTreeGroup, dispose };
+  return { makeTreeMesh, setRingState, disposeTreeGroup, dispose };
 }

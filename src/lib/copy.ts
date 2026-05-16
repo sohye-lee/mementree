@@ -112,4 +112,23 @@ export const copy = {
       serverError: 'something held the field back. try again?',
     },
   },
+
+  detail: {
+    // eyebrow shows "{ord:02} · {modeWord}"
+    // a few mode words are spelled differently here than in the planting modal
+    // (e.g. 'note' → 'notebook') to match the singular-noun feel of the eyebrow.
+    modeWord: {
+      project: 'project',
+      wish: 'wish',
+      diary: 'diary',
+      note: 'notebook',
+    },
+    metaYear: 'year',
+    metaLead: 'lead',
+    metaMemos: 'memos',
+    memosLabel: 'memos',
+    memosEmpty: 'nothing tied here yet.',
+    descPlaceholder: '—',
+    closeLabel: 'close',
+  },
 } as const;
