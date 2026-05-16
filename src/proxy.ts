@@ -3,11 +3,14 @@
 // requests that should succeed.
 //
 // next.js 16 renamed `middleware` → `proxy` (same mechanics, clearer name).
+// exported both as default and as `proxy` to satisfy whichever shape the
+// dev/prod runtime adapter happens to look for (we saw an "adapterFn is not a
+// function" runtime error when only the named export was present).
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function proxy(request: NextRequest) {
+async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -37,6 +40,9 @@ export async function proxy(request: NextRequest) {
 
   return response;
 }
+
+export { proxy };
+export default proxy;
 
 export const config = {
   matcher: [
