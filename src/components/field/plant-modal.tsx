@@ -16,7 +16,7 @@ interface Props {
   defaultLead: string;
   // not provided when first tree (modal forces a plant)
   onClose?: () => void;
-  onPlanted?: () => void;
+  onPlanted?: (treeId: string) => void;
 }
 
 export function PlantModal({
@@ -44,13 +44,21 @@ export function PlantModal({
     if (open && isFirst && chosenMode) nameRef.current?.focus();
   }, [open, isFirst, chosenMode]);
 
-  // close + notify parent on success
+  // notify parent on success — exactly once per planted tree.
+  // useActionState keeps `state.ok` true after a plant, so without the
+  // treeId guard this effect would re-fire (and re-close the modal) every
+  // time the modal is reopened. each plant produces a fresh treeId.
+  const handledTreeId = useRef<string | null>(null);
   useEffect(() => {
-    if (state.ok) {
-      onPlanted?.();
-      onClose?.();
+    if (
+      state.ok &&
+      state.treeId &&
+      state.treeId !== handledTreeId.current
+    ) {
+      handledTreeId.current = state.treeId;
+      onPlanted?.(state.treeId);
     }
-  }, [state.ok, onPlanted, onClose]);
+  }, [state.ok, state.treeId, onPlanted]);
 
   if (!open) return null;
 

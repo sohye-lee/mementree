@@ -50,6 +50,8 @@ export function FieldChrome({
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [fallenOpen, setFallenOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
+  // tree to fly the camera to once it lands in the scene (set after a plant)
+  const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
   const router = useRouter();
 
   const sceneTrees = useMemo<SceneTree[]>(
@@ -133,6 +135,7 @@ export function FieldChrome({
         trees={sceneTrees}
         memosByTreeId={memosByTreeId}
         selectedTreeId={selectedTreeId}
+        focusTreeId={focusTreeId}
         onTreeClick={handleTreeClick}
       />
 
@@ -161,7 +164,13 @@ export function FieldChrome({
 
       <PlantFab
         onClick={() => setPlantOpen(true)}
-        hidden={firstTime || panelOpen || fallenOpen || confirmTarget !== null}
+        hidden={
+          firstTime ||
+          panelOpen ||
+          fallenOpen ||
+          plantOpen ||
+          confirmTarget !== null
+        }
       />
 
       <PlantModal
@@ -169,8 +178,10 @@ export function FieldChrome({
         fieldMode={fieldMode}
         defaultLead={defaultLead}
         onClose={firstTime ? undefined : () => setPlantOpen(false)}
-        onPlanted={() => {
+        onPlanted={(treeId) => {
           setPlantOpen(false);
+          setSelectedTreeId(null);
+          setFocusTreeId(treeId);
           router.refresh();
         }}
       />

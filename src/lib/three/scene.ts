@@ -38,6 +38,8 @@ export interface SceneController {
   setActive: (id: string | null) => void;
   getTreeIds: () => string[];
   syncMemos: (treeId: string, memos: NoteInput[]) => void;
+  // smoothly move the camera to frame the given tree
+  focusTree: (id: string) => void;
   dispose: () => void;
 }
 
@@ -347,6 +349,22 @@ export function createScene(
   // controls
   const controls = createControls(canvas);
 
+  // fly the camera to frame a tree: stay on the side the camera is already on
+  // (flattened to the ground), back off 12 units, aim at mid-canopy height.
+  function focusTree(id: string) {
+    const g = treeGroups.get(id);
+    if (!g) return;
+    const treePos = new THREE.Vector3(g.position.x, 0, g.position.z);
+    const dir = new THREE.Vector3().subVectors(camera.position, treePos);
+    dir.y = 0;
+    if (dir.lengthSq() < 0.01) dir.set(0, 0, 1);
+    dir.normalize();
+    const camPos = treePos.clone().addScaledVector(dir, 12);
+    camPos.y = 1.8;
+    const lookAt = new THREE.Vector3(treePos.x, 2.5, treePos.z);
+    controls.flyTo(camPos, lookAt);
+  }
+
   // raycast
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -503,6 +521,7 @@ export function createScene(
     setActive,
     getTreeIds: () => Array.from(treeGroups.keys()),
     syncMemos,
+    focusTree,
     dispose() {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);

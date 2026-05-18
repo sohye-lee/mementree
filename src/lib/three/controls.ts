@@ -12,8 +12,24 @@ import * as THREE from 'three';
 
 export interface FieldControls {
   update: (dt: number, camera: THREE.PerspectiveCamera) => void;
+  // smoothly fly the camera to `toPos`, ending aimed at `lookAt`.
+  // cancelled the instant the keeper takes manual control.
+  flyTo: (toPos: THREE.Vector3, lookAt: THREE.Vector3) => void;
   dispose: () => void;
 }
+
+// camera fly-to tween, used to frame a freshly planted tree.
+interface FlyState {
+  fromPos: THREE.Vector3;
+  toPos: THREE.Vector3;
+  fromYaw: number;
+  toYaw: number;
+  fromPitch: number;
+  toPitch: number;
+  t: number;
+}
+
+const FLY_DURATION = 1.1; // seconds
 
 interface State {
   yaw: number;
@@ -24,6 +40,7 @@ interface State {
   lastX: number;
   lastY: number;
   zoomVel: number;
+  fly: FlyState | null;
 }
 
 function isInputFocused(): boolean {
@@ -52,6 +69,7 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
     lastX: 0,
     lastY: 0,
     zoomVel: 0,
+    fly: null,
   };
 
   function onMouseDown(e: MouseEvent) {
@@ -67,6 +85,7 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
 
   function onMouseMove(e: MouseEvent) {
     if (!state.dragging) return;
+    state.fly = null; // manual look cancels any fly-to
     const dx = e.clientX - state.lastX;
     const dy = e.clientY - state.lastY;
     state.lastX = e.clientX;
@@ -79,6 +98,7 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
   function onWheel(e: WheelEvent) {
     if (e.target !== canvas) return;
     e.preventDefault();
+    state.fly = null; // manual zoom cancels any fly-to
     // normalize: pixel mode (trackpad) ~10px, line mode (mouse wheel) ~100px
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1;
     const dy = e.deltaY * unit;
@@ -115,6 +135,7 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
 
   function onTouchMove(e: TouchEvent) {
     if (!state.dragging) return;
+    state.fly = null; // manual look cancels any fly-to
     const t = e.touches[0];
     const dx = t.clientX - state.lastX;
     const dy = t.clientY - state.lastY;
@@ -147,8 +168,44 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
   const lookDir = new THREE.Vector3();
   const lookAt = new THREE.Vector3();
 
+  function flyTo(toPos: THREE.Vector3, look: THREE.Vector3) {
+    const dx = look.x - toPos.x;
+    const dy = look.y - toPos.y;
+    const dz = look.z - toPos.z;
+    const horiz = Math.hypot(dx, dz) || 0.001;
+    const targetYaw = Math.atan2(-dx, -dz);
+    const targetPitch = Math.max(-0.6, Math.min(0.4, Math.atan2(dy, horiz)));
+    // unwrap yaw to the shortest rotation direction
+    let d = targetYaw - state.yaw;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    state.fly = {
+      fromPos: state.pos.clone(),
+      toPos: toPos.clone(),
+      fromYaw: state.yaw,
+      toYaw: state.yaw + d,
+      fromPitch: state.pitch,
+      toPitch: targetPitch,
+      t: 0,
+    };
+  }
+
   return {
+    flyTo,
     update(dt, camera) {
+      // fly-to tween — runs until complete or cleared by manual input below
+      if (state.fly) {
+        state.fly.t += dt / FLY_DURATION;
+        const k = Math.min(1, state.fly.t);
+        const e = 1 - Math.pow(1 - k, 3); // easeOutCubic
+        state.pos.lerpVectors(state.fly.fromPos, state.fly.toPos, e);
+        state.yaw =
+          state.fly.fromYaw + (state.fly.toYaw - state.fly.fromYaw) * e;
+        state.pitch =
+          state.fly.fromPitch + (state.fly.toPitch - state.fly.fromPitch) * e;
+        if (k >= 1) state.fly = null;
+      }
+
       // walk
       const speed = state.keys.shift ? 8 : 4;
       fwd.set(-Math.sin(state.yaw), 0, -Math.cos(state.yaw));
@@ -161,6 +218,7 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
       if (mv.lengthSq() > 0) {
         mv.normalize().multiplyScalar(speed * dt);
         state.pos.add(mv);
+        state.fly = null; // walking cancels any fly-to
       }
 
       // wheel zoom (smoothed forward/back along horizontal view direction)
