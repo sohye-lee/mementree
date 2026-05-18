@@ -15,6 +15,7 @@ import {
 } from './note-mesh';
 import { makeGroundTexture, makeVignetteTexture } from './textures';
 import { createTreeFactory, type TreeFactory } from './tree-mesh';
+import { reportCamera } from '@/lib/field-frame';
 import { hashStr, mulberry32 } from '@/lib/seed';
 
 const PAPER = 0xf4f4f1;
@@ -512,11 +513,19 @@ export function createScene(
   // loop
   let animId = 0;
   let last = performance.now();
+  const camDir = new THREE.Vector3();
   function loop(now: number) {
     const dt = Math.min(0.05, (now - last) / 1000);
     const tSec = now / 1000;
     last = now;
     controls.update(dt, camera);
+    // publish camera state for the compass hud
+    camera.getWorldDirection(camDir);
+    reportCamera(
+      Math.atan2(-camDir.x, -camDir.z),
+      camera.position.x,
+      camera.position.z,
+    );
     stepWither(now, dt);
     for (const noteMap of treeNoteGroups.values()) {
       for (const ng of noteMap.values()) updateNoteSway(ng, tSec);

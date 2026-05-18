@@ -1,0 +1,32 @@
+.crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 1px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--ink-30);
+}
+
+.crosshair::before {
+  left: 50%;
+  top: -3px;
+  height: 7px;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+.crosshair::after {
+  top: 50%;
+  left: -3px;
+  width: 7px;
+  height: 1px;
+  transform: translateY(-50%);
+}

@@ -11,6 +11,8 @@ import type { SceneTree } from '@/lib/three/scene';
 import { ConfirmModal } from './confirm-modal';
 import { DetailPanel, type DetailMemo, type DetailTree } from './detail-panel';
 import { FallenTray, type FallenItem } from './fallen-tray';
+import { Compass } from './compass';
+import { Crosshair } from './crosshair';
 import { FieldCanvas } from './field-canvas';
 import { FieldFooter } from './field-footer';
 import { FieldNav } from './field-nav';
@@ -272,6 +274,8 @@ export function FieldChrome({
         onRecenter={() => setRecenterNonce((n) => n + 1)}
       />
 
+      <Compass />
+      <Crosshair />
       <Toaster />
     </>
   );
