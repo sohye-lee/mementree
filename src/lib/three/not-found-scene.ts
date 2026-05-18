@@ -52,12 +52,15 @@ function wrap(
 }
 
 function makeSignTexture(): THREE.CanvasTexture {
-  const W = 760;
-  const H = 460;
+  // supersample (S×) so the carved copy stays crisp, not blurry
+  const S = 2;
+  const W = 760 * S;
+  const H = 460 * S;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
+  const serif = "Georgia, 'Times New Roman', serif";
 
   // soft neutral plank — slightly off the page's paper so it reads as a panel
   ctx.fillStyle = '#eae8e2';
@@ -66,47 +69,50 @@ function makeSignTexture(): THREE.CanvasTexture {
   // faint grain streaks (neutral grey)
   for (let i = 0; i < 44; i++) {
     ctx.strokeStyle = `rgba(120,120,116,${0.04 + Math.random() * 0.06})`;
-    ctx.lineWidth = 1 + Math.random() * 2;
+    ctx.lineWidth = (1 + Math.random() * 2) * S;
     const y = Math.random() * H;
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.bezierCurveTo(
       W * 0.33,
-      y + (Math.random() - 0.5) * 9,
+      y + (Math.random() - 0.5) * 9 * S,
       W * 0.66,
-      y + (Math.random() - 0.5) * 9,
+      y + (Math.random() - 0.5) * 9 * S,
       W,
-      y + (Math.random() - 0.5) * 6,
+      y + (Math.random() - 0.5) * 6 * S,
     );
     ctx.stroke();
   }
 
   // inset border
-  ctx.strokeStyle = 'rgba(60,60,58,0.35)';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(22, 22, W - 44, H - 44);
+  ctx.strokeStyle = 'rgba(60,60,58,0.4)';
+  ctx.lineWidth = 3 * S;
+  ctx.strokeRect(22 * S, 22 * S, W - 44 * S, H - 44 * S);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  ctx.fillStyle = '#1a1a1a';
-  ctx.font = '700 92px "Source Code Pro", ui-monospace, monospace';
-  ctx.fillText(copy.notFound.code, W / 2, 132);
+  // 404 — serif, bold, full ink
+  ctx.fillStyle = '#0a0a0a';
+  ctx.font = `700 ${100 * S}px ${serif}`;
+  ctx.fillText(copy.notFound.code, W / 2, 138 * S);
 
-  ctx.font = '500 30px "Source Code Pro", ui-monospace, monospace';
-  const lines = wrap(ctx, copy.notFound.title, W - 140);
-  let y = 252;
+  // title — serif
+  ctx.font = `500 ${33 * S}px ${serif}`;
+  const lines = wrap(ctx, copy.notFound.title, W - 150 * S);
+  let y = 258 * S;
   for (const line of lines) {
     ctx.fillText(line, W / 2, y);
-    y += 42;
+    y += 46 * S;
   }
 
-  ctx.font = '400 24px "Source Code Pro", ui-monospace, monospace';
-  ctx.fillStyle = 'rgba(60,60,60,0.62)';
-  ctx.fillText(copy.notFound.sub, W / 2, y + 16);
+  // sub — serif italic, dark enough to read clearly
+  ctx.font = `italic 400 ${25 * S}px ${serif}`;
+  ctx.fillStyle = 'rgba(28,28,28,0.78)';
+  ctx.fillText(copy.notFound.sub, W / 2, y + 18 * S);
 
   const tex = new THREE.CanvasTexture(canvas);
-  tex.anisotropy = 8;
+  tex.anisotropy = 16;
   return tex;
 }
 
