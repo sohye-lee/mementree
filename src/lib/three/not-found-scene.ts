@@ -1,6 +1,7 @@
 // the 404 scene — a wooden picket sign in the foreground with five trees
-// scattered far off in the haze. self-contained: no controls, just a
-// gently swaying camera. mounted by src/app/not-found.tsx.
+// scattered far off in the haze. the camera drifts in one slow direction
+// around the sign; the sign billboards to keep facing the camera so its
+// copy stays readable. mounted by src/app/not-found.tsx.
 
 import * as THREE from 'three';
 import { copy } from '@/lib/copy';
@@ -15,8 +16,12 @@ import { createTreeFactory } from './tree-mesh';
 const PAPER = 0xf4f4f1;
 const WOOD = 0x4a3a2a;
 
-// five trees — [x, z, scale]. all far behind the sign so they read as
-// distant silhouettes, small and fog-softened.
+// one slow continuous turn, one direction. ~0.03 rad/s ≈ 3.5 min/turn —
+// about a fifth of the old left-right sway speed.
+const ORBIT_SPEED = 0.03;
+const ORBIT_RADIUS = 7.5;
+
+// five trees — [x, z, scale]. far behind the sign: distant, fog-softened.
 const TREES: ReadonlyArray<readonly [number, number, number]> = [
   [-15, -24, 0.95],
   [17, -30, 0.9],
@@ -54,13 +59,13 @@ function makeSignTexture(): THREE.CanvasTexture {
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  // bright warm plank
-  ctx.fillStyle = '#efe6d0';
+  // soft neutral plank — slightly off the page's paper so it reads as a panel
+  ctx.fillStyle = '#eae8e2';
   ctx.fillRect(0, 0, W, H);
 
-  // soft grain streaks
+  // faint grain streaks (neutral grey)
   for (let i = 0; i < 44; i++) {
-    ctx.strokeStyle = `rgba(150,128,92,${0.04 + Math.random() * 0.06})`;
+    ctx.strokeStyle = `rgba(120,120,116,${0.04 + Math.random() * 0.06})`;
     ctx.lineWidth = 1 + Math.random() * 2;
     const y = Math.random() * H;
     ctx.beginPath();
@@ -77,14 +82,14 @@ function makeSignTexture(): THREE.CanvasTexture {
   }
 
   // inset border
-  ctx.strokeStyle = 'rgba(90,72,46,0.4)';
+  ctx.strokeStyle = 'rgba(60,60,58,0.35)';
   ctx.lineWidth = 3;
   ctx.strokeRect(22, 22, W - 44, H - 44);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  ctx.fillStyle = '#3a3026';
+  ctx.fillStyle = '#1a1a1a';
   ctx.font = '700 92px "Source Code Pro", ui-monospace, monospace';
   ctx.fillText(copy.notFound.code, W / 2, 132);
 
@@ -97,7 +102,7 @@ function makeSignTexture(): THREE.CanvasTexture {
   }
 
   ctx.font = '400 24px "Source Code Pro", ui-monospace, monospace';
-  ctx.fillStyle = 'rgba(58,48,38,0.68)';
+  ctx.fillStyle = 'rgba(60,60,60,0.62)';
   ctx.fillText(copy.notFound.sub, W / 2, y + 16);
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -118,11 +123,10 @@ export function createNotFoundScene(
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(PAPER);
-  // fog reaches far enough that the distant trees stay visible but hazy
   scene.fog = new THREE.Fog(PAPER, 18, 66);
 
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
-  camera.position.set(0, 2.3, 7.4);
+  camera.position.set(0, 2.4, ORBIT_RADIUS);
 
   // ground
   const groundTex = makeGroundTexture();
@@ -180,10 +184,16 @@ export function createNotFoundScene(
   });
 
   // ── wooden picket sign ──────────────────────────────────────────────────
-  // post + board live in one group with a slight organic lean.
+  // sign (outer) yaws to face the camera; signLean (inner) holds the
+  // organic lean + the post & board.
   const sign = new THREE.Group();
+  const signLean = new THREE.Group();
+  signLean.rotation.z = 0.022;
+  signLean.rotation.x = 0.014;
+  sign.add(signLean);
+  scene.add(sign);
 
-  // post — a bark-textured, tapered trunk (wider at the base), not a box
+  // post — a bark-textured, tapered trunk (wider at the base)
   const barkTex = makeBarkTexture();
   const postGeo = new THREE.CylinderGeometry(0.085, 0.16, 2.5, 9, 1);
   const postMat = new THREE.MeshStandardMaterial({
@@ -193,14 +203,14 @@ export function createNotFoundScene(
   });
   const post = new THREE.Mesh(postGeo, postMat);
   post.position.y = 1.25;
-  sign.add(post);
+  signLean.add(post);
 
-  // board — unlit (MeshBasic) so the plank stays bright regardless of the
-  // light angle. pushed forward in z so it sits in front of the post.
+  // board — unlit so the plank stays evenly bright; pushed forward in z so
+  // the post sits behind it.
   const signTex = makeSignTexture();
   const boardGeo = new THREE.BoxGeometry(3.0, 1.82, 0.1);
   const faceMat = new THREE.MeshBasicMaterial({ map: signTex });
-  const edgeMat = new THREE.MeshBasicMaterial({ color: 0xb59a6e });
+  const edgeMat = new THREE.MeshBasicMaterial({ color: 0x9a958b });
   // BoxGeometry face order: +x, -x, +y, -y, +z, -z — texture the z faces
   const board = new THREE.Mesh(boardGeo, [
     edgeMat,
@@ -211,12 +221,7 @@ export function createNotFoundScene(
     faceMat,
   ]);
   board.position.set(0, 2.0, 0.18);
-  sign.add(board);
-
-  // gentle lean — a stake set in the ground by hand, not machined
-  sign.rotation.z = 0.022;
-  sign.rotation.x = 0.014;
-  scene.add(sign);
+  signLean.add(board);
 
   // resize
   function resize() {
@@ -229,16 +234,17 @@ export function createNotFoundScene(
   window.addEventListener('resize', resize);
   resize();
 
-  // loop — gentle camera + tree sway, no controls
+  // loop — one slow continuous orbit; the sign billboards to keep facing us
   let animId = 0;
   function loop(now: number) {
-    const t = now / 1000;
-    treeGroups.forEach((g, i) => {
-      g.rotation.z = Math.sin(t * 0.4 + i) * 0.02;
-    });
-    camera.position.x = Math.sin(t * 0.16) * 0.7;
-    camera.position.y = 2.3 + Math.sin(t * 0.21) * 0.12;
-    camera.lookAt(0, 2.05, 0.18);
+    const a = (now / 1000) * ORBIT_SPEED;
+    camera.position.set(
+      Math.sin(a) * ORBIT_RADIUS,
+      2.4,
+      Math.cos(a) * ORBIT_RADIUS,
+    );
+    camera.lookAt(0, 2.05, 0);
+    sign.rotation.y = a;
     renderer.render(scene, camera);
     animId = requestAnimationFrame(loop);
   }
