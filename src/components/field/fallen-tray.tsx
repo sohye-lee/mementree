@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { liftMemoBack, liftTreeBack } from '@/app/actions';
 import { copy } from '@/lib/copy';
+import { emitToast } from '@/lib/toast-bus';
 import { relativeTime } from '@/lib/time';
 import styles from './fallen-tray.module.css';
 
@@ -48,8 +49,10 @@ export function FallenTray({ open, items, onClose }: Props) {
   async function handleRestore(item: FallenItem) {
     if (item.kind === 'tree') {
       await liftTreeBack(item.id);
+      emitToast(copy.toast.treeLifted);
     } else {
       await liftMemoBack(item.id);
+      emitToast(copy.toast.memoLifted);
     }
     router.refresh();
   }

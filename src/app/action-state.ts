@@ -7,6 +7,7 @@ export type PlantTreeState = {
   ok: boolean;
   error?: 'nameRequired' | 'modeRequired' | 'serverError';
   treeId?: string;
+  treeName?: string;
 };
 
 export const initialPlantState: PlantTreeState = { ok: false };

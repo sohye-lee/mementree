@@ -3,6 +3,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { letMemoFall, witherTree } from '@/app/actions';
+import { copy } from '@/lib/copy';
+import { emitToast } from '@/lib/toast-bus';
 import type { FieldMode } from '@/types/domain';
 import type { NoteInput } from '@/lib/three/note-mesh';
 import type { SceneTree } from '@/lib/three/scene';
@@ -10,10 +12,11 @@ import { ConfirmModal } from './confirm-modal';
 import { DetailPanel, type DetailMemo, type DetailTree } from './detail-panel';
 import { FallenTray, type FallenItem } from './fallen-tray';
 import { FieldCanvas } from './field-canvas';
+import { FieldFooter } from './field-footer';
 import { FieldNav } from './field-nav';
-import { HintBar } from './hint-bar';
 import { PlantFab } from './fab';
 import { PlantModal } from './plant-modal';
+import { Toaster } from './toast';
 
 export interface FieldTreeData extends SceneTree {
   ord: number;
@@ -52,7 +55,14 @@ export function FieldChrome({
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   // tree to fly the camera to once it lands in the scene (set after a plant)
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
+  // bumped to recenter the camera (footer "↑ recenter")
+  const [recenterNonce, setRecenterNonce] = useState(0);
   const router = useRouter();
+
+  const memoCount = useMemo(
+    () => trees.reduce((sum, t) => sum + t.memos.length, 0),
+    [trees],
+  );
 
   const sceneTrees = useMemo<SceneTree[]>(
     () => trees.map((t) => ({ id: t.id, x: t.x, z: t.z, seed: t.seed })),
@@ -112,11 +122,13 @@ export function FieldChrome({
       setConfirmTarget(null);
       setSelectedTreeId(null);
       await witherTree(treeId);
+      emitToast(copy.toast.treeWithered);
       router.refresh();
     } else {
       const memoId = confirmTarget.memoId;
       setConfirmTarget(null);
       await letMemoFall(memoId);
+      emitToast(copy.toast.memoFell);
       router.refresh();
     }
   }
@@ -127,6 +139,8 @@ export function FieldChrome({
     <>
       <FieldNav
         handle={handle}
+        treeCount={trees.length}
+        selectedOrd={selectedTree?.ord ?? null}
         fallenCount={fallen.length}
         onFallenClick={() => setFallenOpen(true)}
       />
@@ -136,6 +150,7 @@ export function FieldChrome({
         memosByTreeId={memosByTreeId}
         selectedTreeId={selectedTreeId}
         focusTreeId={focusTreeId}
+        recenterNonce={recenterNonce}
         onTreeClick={handleTreeClick}
       />
 
@@ -186,7 +201,17 @@ export function FieldChrome({
         }}
       />
 
-      <HintBar />
+      <FieldFooter
+        treeCount={trees.length}
+        memoCount={memoCount}
+        season={null}
+        phase={null}
+        locating={false}
+        onLocate={() => {}}
+        onRecenter={() => setRecenterNonce((n) => n + 1)}
+      />
+
+      <Toaster />
     </>
   );
 }

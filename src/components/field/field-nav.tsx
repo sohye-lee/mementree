@@ -2,19 +2,31 @@
 
 import { signOut } from '@/app/actions';
 import { copy } from '@/lib/copy';
+import { Clock } from './clock';
 import styles from './field-nav.module.css';
 
 // top nav for the field view.
-// phase A: brand + handle + sign out.
-// phase F: + "↓ fallen" link (opens the recently-fallen tray).
+//   left   — brand + handle
+//   center — tree counter ({selected ord} / {total})
+//   right  — clock, "↓ fallen", sign out
 
 interface Props {
   handle: string;
+  treeCount: number;
+  selectedOrd: number | null;
   fallenCount: number;
   onFallenClick: () => void;
 }
 
-export function FieldNav({ handle, fallenCount, onFallenClick }: Props) {
+const pad = (n: number) => String(n).padStart(2, '0');
+
+export function FieldNav({
+  handle,
+  treeCount,
+  selectedOrd,
+  fallenCount,
+  onFallenClick,
+}: Props) {
   return (
     <header className={styles.top}>
       <div className={styles.left}>
@@ -23,7 +35,15 @@ export function FieldNav({ handle, fallenCount, onFallenClick }: Props) {
         <span className={styles.sep}>/</span>
         <span className={styles.field}>{handle}</span>
       </div>
+
+      <div className={styles.center}>
+        <span className={styles.counter}>
+          {selectedOrd != null ? pad(selectedOrd) : '—'} / {pad(treeCount)}
+        </span>
+      </div>
+
       <div className={styles.right}>
+        <Clock />
         <button
           type="button"
           className={styles.fallenLink}

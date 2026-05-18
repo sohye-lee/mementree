@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { plantTree } from '@/app/actions';
 import { ALL_MODES, initialPlantState } from '@/app/action-state';
 import { copy } from '@/lib/copy';
+import { emitToast } from '@/lib/toast-bus';
 import type { FieldMode } from '@/types/domain';
 import styles from './plant-modal.module.css';
 
@@ -56,9 +57,14 @@ export function PlantModal({
       state.treeId !== handledTreeId.current
     ) {
       handledTreeId.current = state.treeId;
+      emitToast(
+        state.treeName
+          ? `${copy.toast.planted} · ${state.treeName}`
+          : copy.toast.planted,
+      );
       onPlanted?.(state.treeId);
     }
-  }, [state.ok, state.treeId, onPlanted]);
+  }, [state.ok, state.treeId, state.treeName, onPlanted]);
 
   if (!open) return null;
 

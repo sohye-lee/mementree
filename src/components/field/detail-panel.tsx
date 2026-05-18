@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { tieMemo } from '@/app/actions';
 import { initialTieMemoState } from '@/app/action-state';
 import { copy } from '@/lib/copy';
+import { emitToast } from '@/lib/toast-bus';
 import { relativeTime } from '@/lib/time';
 import type { FieldMode } from '@/types/domain';
 import styles from './detail-panel.module.css';
@@ -80,6 +81,7 @@ export function DetailPanel({
       handledMemoId.current = state.memoId;
       setText('');
       setAuthor(defaultAuthor);
+      emitToast(copy.toast.memoTied);
     }
   }, [state.ok, state.memoId, defaultAuthor]);
 

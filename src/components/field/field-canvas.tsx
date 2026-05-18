@@ -15,6 +15,8 @@ interface Props {
   selectedTreeId: string | null;
   // when set, the camera flies to frame this tree once it exists in the scene
   focusTreeId: string | null;
+  // bump this number to fly the camera back to its default framing
+  recenterNonce: number;
   onTreeClick: (id: string | null) => void;
 }
 
@@ -23,6 +25,7 @@ export function FieldCanvas({
   memosByTreeId,
   selectedTreeId,
   focusTreeId,
+  recenterNonce,
   onTreeClick,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -88,6 +91,15 @@ export function FieldCanvas({
       focusedRef.current = focusTreeId;
     }
   }, [focusTreeId, trees]);
+
+  // recenter on nonce change (skip the initial 0)
+  const recenterRef = useRef(recenterNonce);
+  useEffect(() => {
+    if (recenterNonce !== recenterRef.current) {
+      recenterRef.current = recenterNonce;
+      sceneRef.current?.recenter();
+    }
+  }, [recenterNonce]);
 
   return <canvas ref={canvasRef} className={styles.canvas} />;
 }

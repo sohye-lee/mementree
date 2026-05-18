@@ -47,6 +47,26 @@ export const copy = {
     signOut: 'sign out',
   },
 
+  toast: {
+    planted: 'planted', // ` · {name}` appended at call site
+    memoTied: 'memo tied',
+    treeWithered: 'tree withered · in recently fallen',
+    memoFell: 'memo let fall · in recently fallen',
+    treeLifted: 'tree lifted back up',
+    memoLifted: 'memo lifted back up',
+  },
+
+  footer: {
+    seasonPlaceholder: '—',
+    phasePlaceholder: '—',
+    trees: 'trees',
+    memos: 'memos',
+    recenter: '↑ recenter',
+    hint: { walk: 'walk', look: 'look', tree: 'tree' },
+    // env strip is clickable to resolve real location (geolocation opt-in)
+    locateTitle: 'use my location',
+  },
+
   plant: {
     cancel: 'cancel',
     submitting: 'planting…',

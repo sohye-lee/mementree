@@ -40,6 +40,8 @@ export interface SceneController {
   syncMemos: (treeId: string, memos: NoteInput[]) => void;
   // smoothly move the camera to frame the given tree
   focusTree: (id: string) => void;
+  // fly the camera back to its default framing of the field
+  recenter: () => void;
   dispose: () => void;
 }
 
@@ -365,6 +367,15 @@ export function createScene(
     controls.flyTo(camPos, lookAt);
   }
 
+  // fly back to the default framing — (0, 1.8, 12) looking up ~8° at the
+  // field's origin, matching the initial camera state in controls.ts.
+  function recenter() {
+    controls.flyTo(
+      new THREE.Vector3(0, 1.8, 12),
+      new THREE.Vector3(0, 3.5, 0),
+    );
+  }
+
   // raycast
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -522,6 +533,7 @@ export function createScene(
     getTreeIds: () => Array.from(treeGroups.keys()),
     syncMemos,
     focusTree,
+    recenter,
     dispose() {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);

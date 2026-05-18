@@ -1,0 +1,129 @@
+.bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  z-index: 16;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 16px;
+  background: color-mix(in oklch, var(--paper) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid var(--ink-20);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-50);
+}
+
+/* env strip — clickable to resolve real location */
+.env {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 3px 6px;
+  transition: border-color 140ms, color 140ms;
+}
+
+.env:hover {
+  border-color: var(--ink-20);
+  color: var(--ink-70);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.glyph {
+  color: var(--ink-30);
+  font-size: 9px;
+}
+
+.label {
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.sep {
+  color: var(--ink-20);
+}
+
+.dot {
+  color: var(--ink-20);
+  margin: 0 2px;
+}
+
+.locating {
+  color: var(--ink-30);
+  font-style: italic;
+}
+
+/* hint — center */
+.hint {
+  display: flex;
+  gap: 14px;
+  justify-self: center;
+  color: var(--ink-50);
+}
+
+.k {
+  display: inline-block;
+  padding: 0 5px;
+  margin: 0 1px;
+  border: 1px solid var(--ink-20);
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-70);
+}
+
+/* recenter — right */
+.recenter {
+  justify-self: end;
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-50);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: color 140ms, border-color 140ms;
+}
+
+.recenter:hover {
+  color: var(--ink);
+  border-color: var(--ink-20);
+}
+
+@media (max-width: 720px) {
+  .hint {
+    display: none;
+  }
+  .bar {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .bar {
+    font-size: 10px;
+  }
+  .env {
+    gap: 5px;
+  }
+}

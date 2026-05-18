@@ -139,7 +139,7 @@ export async function plantTree(
 
   if (error || !inserted) return { ok: false, error: 'serverError' };
   revalidatePath('/');
-  return { ok: true, treeId: inserted.id as string };
+  return { ok: true, treeId: inserted.id as string, treeName: name };
 }
 
 // ─── tie memo ────────────────────────────────────────────────────────────────
