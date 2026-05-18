@@ -1,24 +1,28 @@
-// the 404 scene — a small field of five trees with a wooden picket sign
-// in the middle bearing the not-found copy. self-contained: no controls,
-// just a gently swaying camera. mounted by src/app/not-found.tsx.
+// the 404 scene — a wooden picket sign in the foreground with five trees
+// scattered far off in the haze. self-contained: no controls, just a
+// gently swaying camera. mounted by src/app/not-found.tsx.
 
 import * as THREE from 'three';
 import { copy } from '@/lib/copy';
 import { hashStr } from '@/lib/seed';
-import { makeGroundTexture, makeVignetteTexture } from './textures';
+import {
+  makeBarkTexture,
+  makeGroundTexture,
+  makeVignetteTexture,
+} from './textures';
 import { createTreeFactory } from './tree-mesh';
 
 const PAPER = 0xf4f4f1;
-const WOOD_DARK = 0x4a3a2a;
+const WOOD = 0x4a3a2a;
 
-// five trees — [x, z, scale]. all placed behind / beside the sign so the
-// picket reads clean from the camera (which sits at +z).
+// five trees — [x, z, scale]. all far behind the sign so they read as
+// distant silhouettes, small and fog-softened.
 const TREES: ReadonlyArray<readonly [number, number, number]> = [
-  [-6, -7, 1.22],
-  [7, -9, 1.12],
-  [-8.5, -3, 0.58],
-  [8.2, -3.6, 0.66],
-  [2, -11.5, 0.92],
+  [-15, -24, 0.95],
+  [17, -30, 0.9],
+  [-22, -34, 0.8],
+  [21, -26, 0.86],
+  [3, -44, 0.78],
 ];
 
 function wrap(
@@ -50,13 +54,13 @@ function makeSignTexture(): THREE.CanvasTexture {
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  // pale aged wood plank
-  ctx.fillStyle = '#d6c9af';
+  // bright warm plank
+  ctx.fillStyle = '#efe6d0';
   ctx.fillRect(0, 0, W, H);
 
-  // grain streaks
+  // soft grain streaks
   for (let i = 0; i < 44; i++) {
-    ctx.strokeStyle = `rgba(120,100,70,${0.04 + Math.random() * 0.07})`;
+    ctx.strokeStyle = `rgba(150,128,92,${0.04 + Math.random() * 0.06})`;
     ctx.lineWidth = 1 + Math.random() * 2;
     const y = Math.random() * H;
     ctx.beginPath();
@@ -72,20 +76,18 @@ function makeSignTexture(): THREE.CanvasTexture {
     ctx.stroke();
   }
 
-  // inset border, burned into the plank
-  ctx.strokeStyle = 'rgba(70,55,35,0.5)';
+  // inset border
+  ctx.strokeStyle = 'rgba(90,72,46,0.4)';
   ctx.lineWidth = 3;
   ctx.strokeRect(22, 22, W - 44, H - 44);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // 404
   ctx.fillStyle = '#3a3026';
   ctx.font = '700 92px "Source Code Pro", ui-monospace, monospace';
   ctx.fillText(copy.notFound.code, W / 2, 132);
 
-  // title — wraps to the plank width
   ctx.font = '500 30px "Source Code Pro", ui-monospace, monospace';
   const lines = wrap(ctx, copy.notFound.title, W - 140);
   let y = 252;
@@ -94,7 +96,6 @@ function makeSignTexture(): THREE.CanvasTexture {
     y += 42;
   }
 
-  // sub
   ctx.font = '400 24px "Source Code Pro", ui-monospace, monospace';
   ctx.fillStyle = 'rgba(58,48,38,0.68)';
   ctx.fillText(copy.notFound.sub, W / 2, y + 16);
@@ -117,15 +118,16 @@ export function createNotFoundScene(
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(PAPER);
-  scene.fog = new THREE.Fog(PAPER, 16, 58);
+  // fog reaches far enough that the distant trees stay visible but hazy
+  scene.fog = new THREE.Fog(PAPER, 18, 66);
 
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
-  camera.position.set(0, 2.3, 7.6);
+  camera.position.set(0, 2.3, 7.4);
 
   // ground
   const groundTex = makeGroundTexture();
   const groundMat = new THREE.MeshBasicMaterial({ map: groundTex });
-  const groundGeo = new THREE.PlaneGeometry(400, 400);
+  const groundGeo = new THREE.PlaneGeometry(600, 600);
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
@@ -166,7 +168,7 @@ export function createNotFoundScene(
   fill.position.set(-6, 4, -8);
   scene.add(fill);
 
-  // trees
+  // distant trees
   const treeFactory = createTreeFactory();
   const treeGroups: THREE.Group[] = [];
   TREES.forEach(([x, z, s], i) => {
@@ -177,26 +179,28 @@ export function createNotFoundScene(
     treeGroups.push(g);
   });
 
-  // wooden picket sign
-  const postGeo = new THREE.BoxGeometry(0.17, 2.5, 0.17);
+  // ── wooden picket sign ──────────────────────────────────────────────────
+  // post + board live in one group with a slight organic lean.
+  const sign = new THREE.Group();
+
+  // post — a bark-textured, tapered trunk (wider at the base), not a box
+  const barkTex = makeBarkTexture();
+  const postGeo = new THREE.CylinderGeometry(0.085, 0.16, 2.5, 9, 1);
   const postMat = new THREE.MeshStandardMaterial({
-    color: WOOD_DARK,
-    roughness: 0.92,
+    color: WOOD,
+    map: barkTex,
+    roughness: 0.96,
   });
   const post = new THREE.Mesh(postGeo, postMat);
-  post.position.set(0, 1.25, 0);
-  scene.add(post);
+  post.position.y = 1.25;
+  sign.add(post);
 
+  // board — unlit (MeshBasic) so the plank stays bright regardless of the
+  // light angle. pushed forward in z so it sits in front of the post.
   const signTex = makeSignTexture();
   const boardGeo = new THREE.BoxGeometry(3.0, 1.82, 0.1);
-  const faceMat = new THREE.MeshStandardMaterial({
-    map: signTex,
-    roughness: 0.85,
-  });
-  const edgeMat = new THREE.MeshStandardMaterial({
-    color: WOOD_DARK,
-    roughness: 0.92,
-  });
+  const faceMat = new THREE.MeshBasicMaterial({ map: signTex });
+  const edgeMat = new THREE.MeshBasicMaterial({ color: 0xb59a6e });
   // BoxGeometry face order: +x, -x, +y, -y, +z, -z — texture the z faces
   const board = new THREE.Mesh(boardGeo, [
     edgeMat,
@@ -206,8 +210,13 @@ export function createNotFoundScene(
     faceMat,
     faceMat,
   ]);
-  board.position.set(0, 2.2, 0);
-  scene.add(board);
+  board.position.set(0, 2.0, 0.18);
+  sign.add(board);
+
+  // gentle lean — a stake set in the ground by hand, not machined
+  sign.rotation.z = 0.022;
+  sign.rotation.x = 0.014;
+  scene.add(sign);
 
   // resize
   function resize() {
@@ -220,7 +229,7 @@ export function createNotFoundScene(
   window.addEventListener('resize', resize);
   resize();
 
-  // loop — gentle camera sway + faint tree sway, no controls
+  // loop — gentle camera + tree sway, no controls
   let animId = 0;
   function loop(now: number) {
     const t = now / 1000;
@@ -229,7 +238,7 @@ export function createNotFoundScene(
     });
     camera.position.x = Math.sin(t * 0.16) * 0.7;
     camera.position.y = 2.3 + Math.sin(t * 0.21) * 0.12;
-    camera.lookAt(0, 2.2, 0);
+    camera.lookAt(0, 2.05, 0.18);
     renderer.render(scene, camera);
     animId = requestAnimationFrame(loop);
   }
@@ -252,6 +261,7 @@ export function createNotFoundScene(
       else gridMat.dispose();
       postGeo.dispose();
       postMat.dispose();
+      barkTex.dispose();
       boardGeo.dispose();
       faceMat.dispose();
       edgeMat.dispose();
