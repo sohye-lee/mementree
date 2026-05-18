@@ -150,6 +150,14 @@ export const copy = {
     },
   },
 
+  treeAccess: {
+    label: 'who sees this tree',
+    public: 'public',
+    publicHint: 'anyone with the link',
+    shared: 'shared',
+    sharedHint: 'signed-in visitors only',
+  },
+
   detail: {
     modeWord: {
       project: 'project',

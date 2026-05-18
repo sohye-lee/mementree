@@ -1,0 +1,48 @@
+.wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.opt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  text-align: left;
+  appearance: none;
+  border: 1px solid var(--ink-20);
+  background: var(--paper);
+  font: inherit;
+  font-family: var(--mono);
+  color: var(--ink-70);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color 140ms, background 140ms, color 140ms;
+}
+
+.opt:hover:not(:disabled) {
+  border-color: var(--ink-50);
+}
+
+.opt.active {
+  border-color: var(--ink);
+  background: color-mix(in oklch, var(--paper) 92%, var(--ink) 8%);
+  color: var(--ink);
+}
+
+.opt:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.optName {
+  font-size: 12px;
+  text-transform: lowercase;
+}
+
+.optHint {
+  font-size: 10px;
+  color: var(--ink-50);
+  line-height: 1.35;
+}

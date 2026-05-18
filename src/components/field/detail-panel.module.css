@@ -104,6 +104,19 @@
   color: var(--ink-30);
 }
 
+.accessRow {
+  margin-top: 14px;
+}
+
+.accessLabel {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-50);
+  margin-bottom: 6px;
+}
+
 /* body */
 .body {
   flex: 1;

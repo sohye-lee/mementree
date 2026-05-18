@@ -7,6 +7,8 @@ export type FieldAccess = 'private' | 'unlisted' | 'public';
 export type VisitorPerm = 'read' | 'memo' | 'plant';
 export type TreeState = 'living' | 'withered';
 export type MemoState = 'tied' | 'fallen';
+// per-tree visibility: 'public' = any visitor, 'shared' = signed-in visitors only
+export type TreeAccess = 'public' | 'shared';
 
 export interface Profile {
   id: string;            // uuid, references auth.users(id)
@@ -39,6 +41,7 @@ export interface Tree {
   z: number;             // world coord, meters
   seed: number;          // uint32 from hashStr(name); determines tree shape
   state: TreeState;
+  access: TreeAccess;
   witheredAt: string | null;
   createdAt: string;
   updatedAt: string;

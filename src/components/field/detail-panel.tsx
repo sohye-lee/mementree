@@ -6,7 +6,8 @@ import { initialTieMemoState } from '@/app/action-state';
 import { copy } from '@/lib/copy';
 import { emitToast } from '@/lib/toast-bus';
 import { relativeTime } from '@/lib/time';
-import type { FieldMode } from '@/types/domain';
+import type { FieldMode, TreeAccess } from '@/types/domain';
+import { AccessToggle } from './access-toggle';
 import styles from './detail-panel.module.css';
 
 const c = copy.detail;
@@ -25,6 +26,7 @@ export interface DetailTree {
   year: string | null;
   lead: string | null;
   description: string | null;
+  access: TreeAccess;
 }
 
 interface Props {
@@ -36,6 +38,7 @@ interface Props {
   onRequestWither: (treeId: string) => void;
   onRequestMemoFall: (memoId: string) => void;
   onOpenMemo: (index: number) => void;
+  onSetAccess: (treeId: string, access: TreeAccess) => void;
 }
 
 export function DetailPanel({
@@ -47,6 +50,7 @@ export function DetailPanel({
   onRequestWither,
   onRequestMemoFall,
   onOpenMemo,
+  onSetAccess,
 }: Props) {
   const isOpen = tree !== null;
   const lastTreeRef = useRef<DetailTree | null>(tree);
@@ -157,6 +161,16 @@ export function DetailPanel({
             >
               {shown.description || c.descPlaceholder}
             </p>
+
+            <div className={styles.accessRow}>
+              <span className={styles.accessLabel}>
+                {copy.treeAccess.label}
+              </span>
+              <AccessToggle
+                value={shown.access}
+                onChange={(v) => onSetAccess(shown.id, v)}
+              />
+            </div>
           </div>
 
           <div className={styles.body}>

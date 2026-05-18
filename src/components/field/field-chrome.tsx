@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { letMemoFall, witherTree } from '@/app/actions';
+import { letMemoFall, setTreeAccess, witherTree } from '@/app/actions';
 import { copy } from '@/lib/copy';
 import { emitToast } from '@/lib/toast-bus';
 import { useEnvironment } from '@/lib/use-environment';
-import type { FieldMode } from '@/types/domain';
+import type { FieldMode, TreeAccess } from '@/types/domain';
 import type { NoteInput } from '@/lib/three/note-mesh';
 import type { SceneTree } from '@/lib/three/scene';
 import { ConfirmModal } from './confirm-modal';
@@ -29,6 +29,7 @@ export interface FieldTreeData extends SceneTree {
   year: string | null;
   lead: string | null;
   description: string | null;
+  access: TreeAccess;
   memos: DetailMemo[];
 }
 
@@ -126,6 +127,7 @@ export function FieldChrome({
       year: t.year,
       lead: t.lead,
       description: t.description,
+      access: t.access,
     };
   }, [selectedTreeId, trees]);
 
@@ -156,6 +158,14 @@ export function FieldChrome({
   const handleRequestMemoFall = useCallback((memoId: string) => {
     setConfirmTarget({ kind: 'letMemoFall', memoId });
   }, []);
+
+  const handleSetAccess = useCallback(
+    async (treeId: string, access: TreeAccess) => {
+      await setTreeAccess(treeId, access);
+      router.refresh();
+    },
+    [router],
+  );
 
   // memo viewer — index is clamped against the live memo list
   const viewerMemo =
@@ -221,6 +231,7 @@ export function FieldChrome({
         onRequestWither={handleRequestWither}
         onRequestMemoFall={handleRequestMemoFall}
         onOpenMemo={(index) => setViewerIndex(index)}
+        onSetAccess={handleSetAccess}
       />
 
       <MemoView

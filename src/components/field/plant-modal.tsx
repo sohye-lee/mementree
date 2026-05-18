@@ -5,7 +5,8 @@ import { plantTree } from '@/app/actions';
 import { ALL_MODES, initialPlantState } from '@/app/action-state';
 import { copy } from '@/lib/copy';
 import { emitToast } from '@/lib/toast-bus';
-import type { FieldMode } from '@/types/domain';
+import type { FieldMode, TreeAccess } from '@/types/domain';
+import { AccessToggle } from './access-toggle';
 import styles from './plant-modal.module.css';
 
 const c = copy.plant;
@@ -29,6 +30,7 @@ export function PlantModal({
 }: Props) {
   const isFirst = fieldMode === null;
   const [chosenMode, setChosenMode] = useState<FieldMode | null>(fieldMode);
+  const [chosenAccess, setChosenAccess] = useState<TreeAccess>('public');
   const [state, formAction, pending] = useActionState(
     plantTree,
     initialPlantState,
@@ -57,6 +59,7 @@ export function PlantModal({
       state.treeId !== handledTreeId.current
     ) {
       handledTreeId.current = state.treeId;
+      setChosenAccess('public');
       emitToast(
         state.treeName
           ? `${copy.toast.planted} · ${state.treeName}`
@@ -213,6 +216,16 @@ export function PlantModal({
               placeholder={c.fields.brief.placeholder}
               disabled={pending}
             />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>{copy.treeAccess.label}</label>
+            <AccessToggle
+              value={chosenAccess}
+              onChange={setChosenAccess}
+              disabled={pending}
+            />
+            <input type="hidden" name="access" value={chosenAccess} />
           </div>
 
           <div className={styles.foot}>

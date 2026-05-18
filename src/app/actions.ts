@@ -79,6 +79,7 @@ export async function plantTree(
   const leadRaw = String(formData.get('lead') ?? '').trim();
   const briefRaw = String(formData.get('brief') ?? '').trim();
   const modeRaw = formData.get('mode');
+  const access = formData.get('access') === 'shared' ? 'shared' : 'public';
 
   if (!name) return { ok: false, error: 'nameRequired' };
 
@@ -129,6 +130,7 @@ export async function plantTree(
     x: pos.x,
     z: pos.z,
     seed: hashStr(`${name}:${Date.now()}`),
+    access,
   };
 
   const { data: inserted, error } = await supabase
@@ -251,5 +253,21 @@ export async function liftMemoBack(memoId: string) {
     .from('memos')
     .update({ state: 'tied', fallen_at: null })
     .eq('id', memoId);
+  revalidatePath('/');
+}
+
+// ─── tree visibility ─────────────────────────────────────────────────────────
+
+export async function setTreeAccess(
+  treeId: string,
+  access: 'public' | 'shared',
+) {
+  const ctx = await requireKeeperField();
+  if (!ctx) return;
+  const { supabase } = ctx;
+  await supabase
+    .from('trees')
+    .update({ access: access === 'shared' ? 'shared' : 'public' })
+    .eq('id', treeId);
   revalidatePath('/');
 }

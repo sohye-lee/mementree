@@ -5,7 +5,7 @@ import {
 } from '@/components/field/field-chrome';
 import type { FallenItem } from '@/components/field/fallen-tray';
 import { createClient } from '@/lib/db/server';
-import type { FieldMode } from '@/types/domain';
+import type { FieldMode, TreeAccess } from '@/types/domain';
 
 // the field view — mementree's home for an authed keeper.
 // data loading: profile → field (auto-create if missing) → living trees +
@@ -60,7 +60,7 @@ export default async function Home() {
     const { data: treeRows } = await supabase
       .from('trees')
       .select(
-        'id, x, z, seed, ord, name, year, lead, description, state, withered_at',
+        'id, x, z, seed, ord, name, year, lead, description, access, state, withered_at',
       )
       .eq('field_id', field.id)
       .in('state', ['living', 'withered'])
@@ -117,6 +117,7 @@ export default async function Home() {
           year: (r.year as string | null) ?? null,
           lead: (r.lead as string | null) ?? null,
           description: (r.description as string | null) ?? null,
+          access: ((r.access as string | null) ?? 'public') as TreeAccess,
           memos: myMemos.map((m) => ({
             id: m.id,
             author: m.author,
