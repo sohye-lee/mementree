@@ -1,0 +1,83 @@
+/* mementree mark — tree growth rings, eccentric pith.
+ * the rings draw themselves on, hold, then un-draw, on a slow loop —
+ * a quiet "the field keeps time" gesture. respects reduced-motion.
+ */
+
+.logo {
+  display: block;
+  overflow: visible;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: ring-draw 14s ease-in-out infinite;
+}
+
+.ring2 {
+  animation-delay: 0.45s;
+}
+
+.ring3 {
+  animation-delay: 0.9s;
+}
+
+.pith {
+  fill: var(--green);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pith-in 14s ease-in-out infinite;
+}
+
+@keyframes ring-draw {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  10% {
+    stroke-dashoffset: 0;
+  }
+  /* hold drawn */
+  88% {
+    stroke-dashoffset: 0;
+  }
+  /* un-draw in reverse, then loop redraws */
+  100% {
+    stroke-dashoffset: 100;
+  }
+}
+
+@keyframes pith-in {
+  0%,
+  7% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .pith {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

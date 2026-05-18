@@ -22,6 +22,8 @@
   /* accents — used sparingly and with intent */
   --red: #c1410f;
   --mint: #6a8f7b;
+  /* brand green — the deeper of the two tree-selection greens */
+  --green: #3f8059;
 
   /* type — `--font-mono` and `--font-sans` come from next/font in layout.tsx */
   --mono: var(--font-mono), 'Source Code Pro', ui-monospace, 'SF Mono', Menlo,

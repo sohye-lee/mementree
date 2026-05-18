@@ -2,6 +2,7 @@
 
 import { signOut } from '@/app/actions';
 import { copy } from '@/lib/copy';
+import { Logo } from '@/components/brand/logo';
 import { Clock } from './clock';
 import styles from './field-nav.module.css';
 
@@ -30,7 +31,7 @@ export function FieldNav({
   return (
     <header className={styles.top}>
       <div className={styles.left}>
-        <span className={styles.mark} aria-hidden="true" />
+        <Logo size={18} />
         <span className={styles.brand}>{copy.brand}</span>
         <span className={styles.sep}>/</span>
         <span className={styles.field}>{handle}</span>

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { copy } from '@/lib/copy';
+import { Logo } from '@/components/brand/logo';
 import { createClient } from '@/lib/db/server';
 import { SignInForm } from './sign-in-form';
 import styles from './sign-in.module.css';
@@ -30,7 +31,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     <div className={styles.body}>
       <header className={styles.top}>
         <div className={styles.brand}>
-          <span className={styles.brandMark} />
+          <Logo size={16} />
           <span>{copy.brand}</span>
           <span className={styles.brandSep}>/</span>
           <span className={styles.brandState}>{c.topbarState}</span>

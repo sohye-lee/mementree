@@ -27,15 +27,6 @@
   min-width: 0;
 }
 
-.mark {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--ink);
-  flex-shrink: 0;
-}
-
 .brand {
   font-weight: 600;
 }
