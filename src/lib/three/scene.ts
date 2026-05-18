@@ -13,6 +13,7 @@ import {
   type NoteInput,
   type NoteGroup,
 } from './note-mesh';
+import { createBird, type BirdSystem } from './bird';
 import { makeGroundTexture, makeVignetteTexture } from './textures';
 import { createTreeFactory, type TreeFactory } from './tree-mesh';
 import { createRain, createSnow, type WeatherSystem } from './weather';
@@ -367,6 +368,20 @@ export function createScene(
   // seed initial trees
   for (const t of options.trees) addTree(t);
 
+  // ambient bird — visits a random branch tip now and then
+  const bird: BirdSystem = createBird();
+  scene.add(bird.object);
+  function pickPerch(): THREE.Vector3 | null {
+    const groups = Array.from(treeGroups.values());
+    if (groups.length === 0) return null;
+    const g = groups[Math.floor(Math.random() * groups.length)];
+    const tips = g.userData.tips as THREE.Vector3[] | undefined;
+    if (!tips || tips.length === 0) return null;
+    const tip = tips[Math.floor(Math.random() * tips.length)];
+    // tree groups carry position only (no rotation/scale) → world = local + pos
+    return tip.clone().add(g.position);
+  }
+
   // controls
   const controls = createControls(canvas);
 
@@ -576,6 +591,7 @@ export function createScene(
     );
     stepWither(now, dt);
     weatherSystem?.update(dt);
+    bird.update(dt, pickPerch);
     for (const noteMap of treeNoteGroups.values()) {
       for (const ng of noteMap.values()) updateNoteSway(ng, tSec);
     }
@@ -595,6 +611,8 @@ export function createScene(
     setEnvironment,
     dispose() {
       cancelAnimationFrame(animId);
+      scene.remove(bird.object);
+      bird.dispose();
       if (weatherSystem) {
         scene.remove(weatherSystem.object);
         weatherSystem.dispose();
