@@ -19,6 +19,9 @@ import { makeBarkTexture } from './textures';
 const INK20 = 0xc9c9c5;
 const MINT = 0x6a8f7b;
 const RED = 0xc1410f;
+// trunk tint when a tree is selected — a deep green, bright enough to read
+// through the dark bark texture it multiplies against.
+const SELECTED_GREEN = 0x4e8c63;
 
 export type RingState = 'base' | 'hover' | 'active';
 
@@ -170,6 +173,8 @@ export function createTreeFactory(): TreeFactory {
     group.userData.ring = ring;
     group.userData.tips = tips;
     group.userData.trunkMat = myTrunkMat;
+    // original trunk color, so the selected-green tint can be reverted
+    group.userData.trunkBaseColor = myTrunkMat.color.clone();
     group.userData.branchGeos = branchGeometries;
     group.userData.ringGeo = ringGeo;
     group.userData.treeId = treeId;
@@ -177,15 +182,32 @@ export function createTreeFactory(): TreeFactory {
     return group;
   }
 
+  // state drives both the ground ring's color and the trunk tint:
+  //   active → red ring + deep-green trunk
+  //   hover  → mint ring
+  //   base   → faint ring + original trunk color
   function setRingState(group: THREE.Group, state: RingState) {
     const ring = group.userData.ring as THREE.LineLoop | undefined;
-    if (!ring) return;
-    ring.material =
-      state === 'active'
-        ? ringMatActive
-        : state === 'hover'
-          ? ringMatHover
-          : ringMatBase;
+    if (ring) {
+      ring.material =
+        state === 'active'
+          ? ringMatActive
+          : state === 'hover'
+            ? ringMatHover
+            : ringMatBase;
+    }
+
+    const trunkMat = group.userData.trunkMat as
+      | THREE.MeshStandardMaterial
+      | undefined;
+    const baseColor = group.userData.trunkBaseColor as THREE.Color | undefined;
+    if (trunkMat && baseColor) {
+      if (state === 'active') {
+        trunkMat.color.setHex(SELECTED_GREEN);
+      } else {
+        trunkMat.color.copy(baseColor);
+      }
+    }
   }
 
   function disposeTreeGroup(group: THREE.Group) {
