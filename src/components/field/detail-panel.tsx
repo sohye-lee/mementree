@@ -62,19 +62,32 @@ export function DetailPanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
-  // memo composer state
+  // memo composer state — both fields controlled so they reset cleanly
   const [text, setText] = useState('');
+  const [author, setAuthor] = useState(defaultAuthor);
   const [state, formAction, pending] = useActionState(
     tieMemo,
     initialTieMemoState,
   );
+
+  // reset the composer once per tied memo. useActionState keeps state.ok
+  // true after the first memo, so keying on state.ok alone would miss the
+  // 2nd+ memo. key on the fresh memoId instead — a tie should leave an
+  // empty form, not look like an edit of the memo just written.
+  const handledMemoId = useRef<string | null>(null);
   useEffect(() => {
-    if (state.ok) setText('');
-  }, [state.ok]);
+    if (state.ok && state.memoId && state.memoId !== handledMemoId.current) {
+      handledMemoId.current = state.memoId;
+      setText('');
+      setAuthor(defaultAuthor);
+    }
+  }, [state.ok, state.memoId, defaultAuthor]);
+
   // clear composer when switching trees
   useEffect(() => {
     setText('');
-  }, [tree?.id]);
+    setAuthor(defaultAuthor);
+  }, [tree?.id, defaultAuthor]);
 
   const modeWord = fieldMode ? c.modeWord[fieldMode] : '—';
   const ordStr = shown ? String(shown.ord).padStart(2, '0') : '—';
@@ -185,7 +198,8 @@ export function DetailPanel({
               name="author"
               maxLength={32}
               placeholder={c.composer.authorPlaceholder}
-              defaultValue={defaultAuthor}
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
               disabled={pending}
             />
             <textarea
