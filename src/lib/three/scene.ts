@@ -18,7 +18,7 @@ import { createTreeFactory, type TreeFactory } from './tree-mesh';
 import { hashStr, mulberry32 } from '@/lib/seed';
 
 const PAPER = 0xf4f4f1;
-const WITHER_DURATION = 1400;
+const WITHER_DURATION = 1700;
 
 export interface SceneTree {
   id: string;
@@ -43,9 +43,13 @@ export interface SceneController {
 
 const CLICK_DRAG_THRESHOLD = 6;
 
-interface WitheringEntry {
-  group: THREE.Group;
-  noteGroups: NoteGroup[];
+// a withered tree, sampled into a drifting point cloud.
+interface WitherCloud {
+  points: THREE.Points;
+  geometry: THREE.BufferGeometry;
+  material: THREE.PointsMaterial;
+  velocities: Float32Array;
+  count: number;
   start: number;
 }
 
@@ -116,8 +120,8 @@ export function createScene(
   const treeGroups = new Map<string, THREE.Group>();
   const treeSeeds = new Map<string, number>();
   const treeNoteGroups = new Map<string, Map<string, NoteGroup>>();
-  // trees mid-wither: kept in-scene to animate, disposed when the anim ends.
-  const witheringTrees: WitheringEntry[] = [];
+  // trees mid-wither: dissolved into point clouds, disposed when the anim ends.
+  const witherClouds: WitherCloud[] = [];
   // live falling-paper dom overlays — cleaned up on dispose if still animating.
   const fallingPapers = new Set<HTMLElement>();
   let hoveredId: string | null = null;
@@ -137,17 +141,83 @@ export function createScene(
     treeNoteGroups.set(tree.id, new Map());
   }
 
-  // start a wither animation. the tree leaves the active maps immediately
-  // (no longer pickable / re-addable), but stays in-scene until the anim ends.
+  // sample a mesh tree (+ its notes) into a point cloud. each strided vertex
+  // becomes a dot with an outward+upward velocity, so the tree dissolves into
+  // drifting motes instead of fading in place.
+  function buildWitherCloud(group: THREE.Group): WitherCloud {
+    group.updateWorldMatrix(true, true);
+    const base = new THREE.Vector3();
+    group.getWorldPosition(base);
+
+    const coords: number[] = [];
+    const tmp = new THREE.Vector3();
+    group.traverse((c) => {
+      if (!(c instanceof THREE.Mesh)) return;
+      const posAttr = c.geometry?.getAttribute('position') as
+        | THREE.BufferAttribute
+        | undefined;
+      if (!posAttr) return;
+      // strided sample — ~24 points per mesh keeps the cloud legible
+      const stride = Math.max(1, Math.floor(posAttr.count / 24));
+      for (let i = 0; i < posAttr.count; i += stride) {
+        tmp.fromBufferAttribute(posAttr, i);
+        c.localToWorld(tmp);
+        coords.push(tmp.x, tmp.y, tmp.z);
+      }
+    });
+
+    const count = coords.length / 3;
+    const positions = new Float32Array(coords);
+    const velocities = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      let ox = positions[i * 3] - base.x;
+      let oz = positions[i * 3 + 2] - base.z;
+      const olen = Math.hypot(ox, oz) || 0.001;
+      ox /= olen;
+      oz /= olen;
+      const out = 0.25 + Math.random() * 0.5;
+      velocities[i * 3] = ox * out + (Math.random() - 0.5) * 0.4;
+      velocities[i * 3 + 1] = 0.5 + Math.random() * 1.2; // gentle rise
+      velocities[i * 3 + 2] = oz * out + (Math.random() - 0.5) * 0.4;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+      color: 0x3d3d3d,
+      size: 0.07,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+    });
+    const points = new THREE.Points(geometry, material);
+    return {
+      points,
+      geometry,
+      material,
+      velocities,
+      count,
+      start: performance.now(),
+    };
+  }
+
+  // wither = dissolve into a drifting point cloud. the mesh tree is sampled,
+  // then removed + disposed immediately; the cloud animates on its own.
   function removeTree(id: string) {
     const g = treeGroups.get(id);
     if (!g) return;
     const noteMap = treeNoteGroups.get(id);
-    witheringTrees.push({
-      group: g,
-      noteGroups: noteMap ? Array.from(noteMap.values()) : [],
-      start: performance.now(),
-    });
+
+    const cloud = buildWitherCloud(g);
+    scene.add(cloud.points);
+    witherClouds.push(cloud);
+
+    scene.remove(g);
+    treeFactory.disposeTreeGroup(g);
+    if (noteMap) {
+      for (const ng of noteMap.values()) disposeNoteGroup(ng);
+    }
     treeGroups.delete(id);
     treeSeeds.delete(id);
     treeNoteGroups.delete(id);
@@ -380,45 +450,32 @@ export function createScene(
   window.addEventListener('resize', resize);
   resize();
 
-  // wither animation step — gray + sink + fade. ring (LineLoop) and string
-  // (Line) are skipped by the isMesh check, so only per-tree / per-note
-  // materials are mutated; shared ring materials stay untouched.
-  function stepWither(now: number) {
-    for (let i = witheringTrees.length - 1; i >= 0; i--) {
-      const w = witheringTrees[i];
+  // wither animation step — drift each cloud's points along their velocities,
+  // ease the rise off, and fade only once the dots are diffuse (k² curve, so
+  // they stay visible while spreading and vanish at the end).
+  function stepWither(now: number, dt: number) {
+    for (let i = witherClouds.length - 1; i >= 0; i--) {
+      const w = witherClouds[i];
       const k = Math.min(1, (now - w.start) / WITHER_DURATION);
-      const e = k * k;
-      w.group.traverse((c) => {
-        if (!(c instanceof THREE.Mesh)) return;
-        const mat = c.material;
-        if (Array.isArray(mat) || !mat || !('color' in mat)) return;
-        const m = mat as THREE.MeshStandardMaterial;
-        if (!c.userData._origColor && m.color) {
-          c.userData._origColor = m.color.clone();
-        }
-        if (!m.transparent) {
-          m.transparent = true;
-          m.needsUpdate = true;
-        }
-        const oc = c.userData._origColor as THREE.Color | undefined;
-        if (oc) {
-          const gray = 0.78;
-          m.color.setRGB(
-            oc.r * (1 - e) + gray * e,
-            oc.g * (1 - e) + gray * e,
-            oc.b * (1 - e) + gray * e,
-          );
-        }
-        m.opacity = 1 - e * 0.85;
-      });
-      w.group.position.y = -e * 0.4;
-      w.group.rotation.z = e * 0.06;
+      const posAttr = w.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      const arr = posAttr.array as Float32Array;
+      for (let p = 0; p < w.count; p++) {
+        arr[p * 3] += w.velocities[p * 3] * dt;
+        arr[p * 3 + 1] += w.velocities[p * 3 + 1] * dt;
+        arr[p * 3 + 2] += w.velocities[p * 3 + 2] * dt;
+        w.velocities[p * 3 + 1] *= 0.985; // rise eases off
+      }
+      posAttr.needsUpdate = true;
+      w.material.opacity = 0.9 * (1 - k * k);
+      w.material.size = 0.07 * (1 - k * 0.45);
 
       if (k >= 1) {
-        scene.remove(w.group);
-        treeFactory.disposeTreeGroup(w.group);
-        for (const ng of w.noteGroups) disposeNoteGroup(ng);
-        witheringTrees.splice(i, 1);
+        scene.remove(w.points);
+        w.geometry.dispose();
+        w.material.dispose();
+        witherClouds.splice(i, 1);
       }
     }
   }
@@ -431,7 +488,7 @@ export function createScene(
     const tSec = now / 1000;
     last = now;
     controls.update(dt, camera);
-    stepWither(now);
+    stepWither(now, dt);
     for (const noteMap of treeNoteGroups.values()) {
       for (const ng of noteMap.values()) updateNoteSway(ng, tSec);
     }
@@ -458,11 +515,12 @@ export function createScene(
       controls.dispose();
       for (const el of fallingPapers) el.remove();
       fallingPapers.clear();
-      for (const w of witheringTrees) {
-        treeFactory.disposeTreeGroup(w.group);
-        for (const ng of w.noteGroups) disposeNoteGroup(ng);
+      for (const w of witherClouds) {
+        scene.remove(w.points);
+        w.geometry.dispose();
+        w.material.dispose();
       }
-      witheringTrees.length = 0;
+      witherClouds.length = 0;
       for (const noteMap of treeNoteGroups.values()) {
         for (const ng of noteMap.values()) disposeNoteGroup(ng);
         noteMap.clear();
