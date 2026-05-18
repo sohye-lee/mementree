@@ -58,8 +58,10 @@ export function FieldChrome({
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [fallenOpen, setFallenOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
-  // tree to fly the camera to once it lands in the scene (set after a plant)
+  // tree to fly the camera to; focusNonce bumps on every request so
+  // re-selecting the same tree re-centers it.
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
+  const [focusNonce, setFocusNonce] = useState(0);
   // bumped to recenter the camera (footer "↑ recenter")
   const [recenterNonce, setRecenterNonce] = useState(0);
   // index into the selected tree's memos for the fullscreen-ish memo reader
@@ -135,9 +137,18 @@ export function FieldChrome({
     return t?.memos ?? [];
   }, [selectedTreeId, trees]);
 
-  const handleTreeClick = useCallback((id: string | null) => {
-    setSelectedTreeId(id);
+  const requestFocus = useCallback((id: string) => {
+    setFocusTreeId(id);
+    setFocusNonce((n) => n + 1);
   }, []);
+
+  const handleTreeClick = useCallback(
+    (id: string | null) => {
+      setSelectedTreeId(id);
+      if (id) requestFocus(id);
+    },
+    [requestFocus],
+  );
   const handleClosePanel = useCallback(() => {
     setSelectedTreeId(null);
   }, []);
@@ -187,6 +198,7 @@ export function FieldChrome({
         memosByTreeId={memosByTreeId}
         selectedTreeId={selectedTreeId}
         focusTreeId={focusTreeId}
+        focusNonce={focusNonce}
         recenterNonce={recenterNonce}
         phase={env.phase}
         weather={env.weather}
@@ -198,7 +210,7 @@ export function FieldChrome({
         selectedTreeId={selectedTreeId}
         onSelectTree={(id) => {
           setSelectedTreeId(id);
-          setFocusTreeId(id);
+          requestFocus(id);
         }}
         onPlant={() => setPlantOpen(true)}
       />
@@ -266,7 +278,7 @@ export function FieldChrome({
         onPlanted={(treeId) => {
           setPlantOpen(false);
           setSelectedTreeId(null);
-          setFocusTreeId(treeId);
+          requestFocus(treeId);
           router.refresh();
         }}
       />

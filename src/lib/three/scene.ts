@@ -371,7 +371,8 @@ export function createScene(
   const controls = createControls(canvas);
 
   // fly the camera to frame a tree: stay on the side the camera is already on
-  // (flattened to the ground), back off 12 units, aim at mid-canopy height.
+  // (flattened to the ground), back off 12 units. aim above mid-canopy so the
+  // tree sits a touch low in frame — its crown clears the fixed top nav.
   function focusTree(id: string) {
     const g = treeGroups.get(id);
     if (!g) return;
@@ -382,7 +383,7 @@ export function createScene(
     dir.normalize();
     const camPos = treePos.clone().addScaledVector(dir, 12);
     camPos.y = 1.8;
-    const lookAt = new THREE.Vector3(treePos.x, 2.5, treePos.z);
+    const lookAt = new THREE.Vector3(treePos.x, 3.6, treePos.z);
     controls.flyTo(camPos, lookAt);
   }
 

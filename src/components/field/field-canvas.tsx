@@ -14,8 +14,10 @@ interface Props {
   trees: SceneTree[];
   memosByTreeId: Record<string, NoteInput[]>;
   selectedTreeId: string | null;
-  // when set, the camera flies to frame this tree once it exists in the scene
+  // the camera flies to frame this tree; focusNonce bumps on every request
+  // so re-selecting the same tree re-centers it
   focusTreeId: string | null;
+  focusNonce: number;
   // bump this number to fly the camera back to its default framing
   recenterNonce: number;
   // environment — sun phase + weather, applied to the scene
@@ -29,6 +31,7 @@ export function FieldCanvas({
   memosByTreeId,
   selectedTreeId,
   focusTreeId,
+  focusNonce,
   recenterNonce,
   phase,
   weather,
@@ -85,18 +88,19 @@ export function FieldCanvas({
     sceneRef.current?.setActive(selectedTreeId);
   }, [selectedTreeId]);
 
-  // fly the camera to a freshly planted tree — but only once it has actually
-  // been added to the scene (the trees-diff effect above runs first). each
-  // focusTreeId is acted on a single time.
-  const focusedRef = useRef<string | null>(null);
+  // fly the camera to focusTreeId — once per focusNonce, and only after the
+  // tree exists in the scene (for a fresh plant the trees-diff effect lands
+  // it first; this effect then re-runs on the `trees` change).
+  const focusedNonceRef = useRef(0);
   useEffect(() => {
-    if (!focusTreeId || focusedRef.current === focusTreeId) return;
+    if (focusNonce === focusedNonceRef.current) return;
+    if (!focusTreeId) return;
     const exists = trees.some((t) => t.id === focusTreeId);
     if (exists) {
       sceneRef.current?.focusTree(focusTreeId);
-      focusedRef.current = focusTreeId;
+      focusedNonceRef.current = focusNonce;
     }
-  }, [focusTreeId, trees]);
+  }, [focusNonce, focusTreeId, trees]);
 
   // recenter on nonce change (skip the initial 0)
   const recenterRef = useRef(recenterNonce);

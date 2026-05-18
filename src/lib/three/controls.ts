@@ -72,8 +72,20 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
     fly: null,
   };
 
+  // clicking into the scene means "interact with the field" — drop focus
+  // from any text input so wasd walking isn't swallowed by isInputFocused()
+  // (the canvas itself isn't focusable, so focus would otherwise linger on
+  // the search box / memo composer).
+  function blurActiveInput() {
+    const el = document.activeElement;
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      el.blur();
+    }
+  }
+
   function onMouseDown(e: MouseEvent) {
     if (e.target !== canvas) return;
+    blurActiveInput();
     state.dragging = true;
     state.lastX = e.clientX;
     state.lastY = e.clientY;
@@ -127,6 +139,7 @@ export function createControls(canvas: HTMLCanvasElement): FieldControls {
 
   function onTouchStart(e: TouchEvent) {
     if (e.touches.length === 1) {
+      blurActiveInput();
       state.dragging = true;
       state.lastX = e.touches[0].clientX;
       state.lastY = e.touches[0].clientY;
