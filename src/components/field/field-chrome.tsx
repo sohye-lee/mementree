@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { letMemoFall, witherTree } from '@/app/actions';
 import { copy } from '@/lib/copy';
@@ -14,6 +14,7 @@ import { FallenTray, type FallenItem } from './fallen-tray';
 import { FieldCanvas } from './field-canvas';
 import { FieldFooter } from './field-footer';
 import { FieldNav } from './field-nav';
+import { MemoView } from './memo-view';
 import { PlantFab } from './fab';
 import { PlantModal } from './plant-modal';
 import { Toaster } from './toast';
@@ -57,7 +58,14 @@ export function FieldChrome({
   const [focusTreeId, setFocusTreeId] = useState<string | null>(null);
   // bumped to recenter the camera (footer "↑ recenter")
   const [recenterNonce, setRecenterNonce] = useState(0);
+  // index into the selected tree's memos for the fullscreen-ish memo reader
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const router = useRouter();
+
+  // memo viewer closes whenever the selected tree changes
+  useEffect(() => {
+    setViewerIndex(null);
+  }, [selectedTreeId]);
 
   const memoCount = useMemo(
     () => trees.reduce((sum, t) => sum + t.memos.length, 0),
@@ -115,6 +123,10 @@ export function FieldChrome({
     setConfirmTarget({ kind: 'letMemoFall', memoId });
   }, []);
 
+  // memo viewer — index is clamped against the live memo list
+  const viewerMemo =
+    viewerIndex != null ? (selectedMemos[viewerIndex] ?? null) : null;
+
   async function handleConfirm() {
     if (!confirmTarget) return;
     if (confirmTarget.kind === 'witherTree') {
@@ -162,6 +174,27 @@ export function FieldChrome({
         onClose={handleClosePanel}
         onRequestWither={handleRequestWither}
         onRequestMemoFall={handleRequestMemoFall}
+        onOpenMemo={(index) => setViewerIndex(index)}
+      />
+
+      <MemoView
+        memo={viewerMemo}
+        index={viewerIndex ?? 0}
+        total={selectedMemos.length}
+        treeName={selectedTree?.name ?? ''}
+        onClose={() => setViewerIndex(null)}
+        onPrev={() =>
+          setViewerIndex((i) => (i == null ? null : Math.max(0, i - 1)))
+        }
+        onNext={() =>
+          setViewerIndex((i) =>
+            i == null ? null : Math.min(selectedMemos.length - 1, i + 1),
+          )
+        }
+        onLetFall={(memoId) => {
+          setViewerIndex(null);
+          setConfirmTarget({ kind: 'letMemoFall', memoId });
+        }}
       />
 
       <FallenTray

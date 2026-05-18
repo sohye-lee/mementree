@@ -147,8 +147,14 @@
   border: 1px solid var(--ink-20);
   padding: 10px 12px;
   background: var(--paper);
+  cursor: pointer;
   transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
     border-color 160ms;
+}
+
+.memo:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 1px;
 }
 
 .memo:hover {

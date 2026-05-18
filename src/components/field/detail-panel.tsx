@@ -35,6 +35,7 @@ interface Props {
   onClose: () => void;
   onRequestWither: (treeId: string) => void;
   onRequestMemoFall: (memoId: string) => void;
+  onOpenMemo: (index: number) => void;
 }
 
 export function DetailPanel({
@@ -45,6 +46,7 @@ export function DetailPanel({
   onClose,
   onRequestWither,
   onRequestMemoFall,
+  onOpenMemo,
 }: Props) {
   const isOpen = tree !== null;
   const lastTreeRef = useRef<DetailTree | null>(tree);
@@ -166,8 +168,20 @@ export function DetailPanel({
               <div className={styles.memosEmpty}>{c.memosEmpty}</div>
             ) : (
               <ul className={styles.memoList}>
-                {memos.map((m) => (
-                  <li key={m.id} className={styles.memo}>
+                {memos.map((m, idx) => (
+                  <li
+                    key={m.id}
+                    className={styles.memo}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onOpenMemo(idx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onOpenMemo(idx);
+                      }
+                    }}
+                  >
                     <div className={styles.memoHead}>
                       <span>{relativeTime(m.createdAt)}</span>
                     </div>
@@ -179,7 +193,10 @@ export function DetailPanel({
                       <button
                         type="button"
                         className={styles.memoFallBtn}
-                        onClick={() => onRequestMemoFall(m.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRequestMemoFall(m.id);
+                        }}
                         title={c.letMemoFall}
                       >
                         {c.letMemoFall}
