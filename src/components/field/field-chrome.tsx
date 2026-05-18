@@ -33,7 +33,6 @@ export interface FieldTreeData extends SceneTree {
 }
 
 interface Props {
-  handle: string;
   trees: FieldTreeData[];
   fallen: FallenItem[];
   firstTime: boolean;
@@ -47,7 +46,6 @@ type ConfirmTarget =
   | null;
 
 export function FieldChrome({
-  handle,
   trees,
   fallen,
   firstTime,
@@ -186,7 +184,6 @@ export function FieldChrome({
   return (
     <>
       <FieldNav
-        handle={handle}
         treeCount={trees.length}
         selectedOrd={selectedTree?.ord ?? null}
         fallenCount={fallen.length}

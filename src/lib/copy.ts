@@ -47,6 +47,13 @@ export const copy = {
     signOut: 'sign out',
   },
 
+  notFound: {
+    code: '404',
+    title: "you've wandered past the edge of the field.",
+    sub: 'nothing grows out here.',
+    back: 'back to your field',
+  },
+
   toast: {
     planted: 'planted', // ` · {name}` appended at call site
     memoTied: 'memo tied',

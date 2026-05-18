@@ -12,7 +12,6 @@ import styles from './field-nav.module.css';
 //   right  — clock, "↓ fallen", sign out
 
 interface Props {
-  handle: string;
   treeCount: number;
   selectedOrd: number | null;
   fallenCount: number;
@@ -22,7 +21,6 @@ interface Props {
 const pad = (n: number) => String(n).padStart(2, '0');
 
 export function FieldNav({
-  handle,
   treeCount,
   selectedOrd,
   fallenCount,
@@ -33,8 +31,6 @@ export function FieldNav({
       <div className={styles.left}>
         <Logo size={18} />
         <span className={styles.brand}>{copy.brand}</span>
-        <span className={styles.sep}>/</span>
-        <span className={styles.field}>{handle}</span>
       </div>
 
       <div className={styles.center}>

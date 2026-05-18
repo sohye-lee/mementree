@@ -171,7 +171,6 @@ export default async function Home() {
 
   return (
     <FieldChrome
-      handle={profile?.handle ?? 'keeper'}
       trees={trees}
       fallen={fallen}
       firstTime={firstTime}

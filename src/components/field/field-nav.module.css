@@ -31,18 +31,6 @@
   font-weight: 600;
 }
 
-.sep {
-  color: var(--ink-30);
-}
-
-.field {
-  color: var(--ink-50);
-  text-transform: lowercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .center {
   justify-self: center;
 }
