@@ -19,9 +19,12 @@ import { makeBarkTexture } from './textures';
 const INK20 = 0xc9c9c5;
 const MINT = 0x6a8f7b;
 const RED = 0xc1410f;
-// trunk tint when a tree is selected — a deep green, bright enough to read
-// through the dark bark texture it multiplies against.
-const SELECTED_GREEN = 0x4e8c63;
+// trunk look when a tree is selected. the bark `map` multiplies `color`
+// down toward black, so a green color alone barely reads — `emissive`
+// adds green light independent of the texture, which is what makes the
+// selection actually look green.
+const SELECTED_GREEN = 0x6fb98a; // multiplied color
+const SELECTED_GREEN_GLOW = 0x3f8059; // emissive (texture-independent)
 
 export type RingState = 'base' | 'hover' | 'active';
 
@@ -204,8 +207,10 @@ export function createTreeFactory(): TreeFactory {
     if (trunkMat && baseColor) {
       if (state === 'active') {
         trunkMat.color.setHex(SELECTED_GREEN);
+        trunkMat.emissive.setHex(SELECTED_GREEN_GLOW);
       } else {
         trunkMat.color.copy(baseColor);
+        trunkMat.emissive.setHex(0x000000);
       }
     }
   }
