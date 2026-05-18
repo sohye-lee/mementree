@@ -34,7 +34,14 @@ export interface FieldTreeData extends SceneTree {
   memos: DetailMemo[];
 }
 
+export type ViewerRole = 'keeper' | 'visitor';
+
 interface Props {
+  // 'keeper' = the field's owner; 'visitor' = anyone else
+  role: ViewerRole;
+  // a signed-in viewer (keeper, or a signed-in visitor) may tie memos
+  canMemo: boolean;
+  viewerSignedIn: boolean;
   handle: string;
   slug: string;
   trees: FieldTreeData[];
@@ -50,6 +57,9 @@ type ConfirmTarget =
   | null;
 
 export function FieldChrome({
+  role,
+  canMemo,
+  viewerSignedIn,
   handle,
   slug,
   trees,
@@ -58,6 +68,8 @@ export function FieldChrome({
   fieldMode,
   defaultLead,
 }: Props) {
+  const isKeeper = role === 'keeper';
+
   const [plantOpen, setPlantOpen] = useState(firstTime);
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [fallenOpen, setFallenOpen] = useState(false);
@@ -69,12 +81,11 @@ export function FieldChrome({
   const [focusNonce, setFocusNonce] = useState(0);
   // bumped to recenter the camera (footer "↑ recenter")
   const [recenterNonce, setRecenterNonce] = useState(0);
-  // index into the selected tree's memos for the fullscreen-ish memo reader
+  // index into the selected tree's memos for the close-reading memo card
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const router = useRouter();
 
-  // local sky — sun phase, season, weather (default us east; geolocation
-  // opt-in via the footer's env strip)
+  // local sky — sun phase, season, weather
   const env = useEnvironment();
 
   // memo viewer closes whenever the selected tree changes
@@ -200,6 +211,9 @@ export function FieldChrome({
   return (
     <>
       <FieldNav
+        isKeeper={isKeeper}
+        viewerSignedIn={viewerSignedIn}
+        handle={handle}
         treeCount={trees.length}
         selectedOrd={selectedTree?.ord ?? null}
         fallenCount={fallen.length}
@@ -222,6 +236,7 @@ export function FieldChrome({
       <IndexPanel
         trees={indexTrees}
         selectedTreeId={selectedTreeId}
+        canPlant={isKeeper}
         onSelectTree={(id) => {
           setSelectedTreeId(id);
           requestFocus(id);
@@ -234,11 +249,14 @@ export function FieldChrome({
         memos={selectedMemos}
         fieldMode={fieldMode}
         defaultAuthor={defaultLead}
+        canManage={isKeeper}
+        canMemo={canMemo}
         onClose={handleClosePanel}
         onRequestWither={handleRequestWither}
         onRequestMemoFall={handleRequestMemoFall}
         onOpenMemo={(index) => setViewerIndex(index)}
         onSetAccess={handleSetAccess}
+        onMemoTied={() => router.refresh()}
       />
 
       <MemoView
@@ -246,6 +264,7 @@ export function FieldChrome({
         index={viewerIndex ?? 0}
         total={selectedMemos.length}
         treeName={selectedTree?.name ?? ''}
+        canManage={isKeeper}
         onClose={() => setViewerIndex(null)}
         onPrev={() =>
           setViewerIndex((i) => (i == null ? null : Math.max(0, i - 1)))
@@ -261,50 +280,54 @@ export function FieldChrome({
         }}
       />
 
-      <FallenTray
-        open={fallenOpen}
-        items={fallen}
-        onClose={() => setFallenOpen(false)}
-      />
+      {isKeeper && (
+        <>
+          <FallenTray
+            open={fallenOpen}
+            items={fallen}
+            onClose={() => setFallenOpen(false)}
+          />
 
-      <ShareModal
-        open={shareOpen}
-        handle={handle}
-        slug={slug}
-        onClose={() => setShareOpen(false)}
-      />
+          <ShareModal
+            open={shareOpen}
+            handle={handle}
+            slug={slug}
+            onClose={() => setShareOpen(false)}
+          />
 
-      <ConfirmModal
-        open={confirmTarget !== null}
-        variant={confirmTarget?.kind ?? 'witherTree'}
-        onCancel={() => setConfirmTarget(null)}
-        onConfirm={handleConfirm}
-      />
+          <ConfirmModal
+            open={confirmTarget !== null}
+            variant={confirmTarget?.kind ?? 'witherTree'}
+            onCancel={() => setConfirmTarget(null)}
+            onConfirm={handleConfirm}
+          />
 
-      <PlantFab
-        onClick={() => setPlantOpen(true)}
-        hidden={
-          firstTime ||
-          panelOpen ||
-          fallenOpen ||
-          shareOpen ||
-          plantOpen ||
-          confirmTarget !== null
-        }
-      />
+          <PlantFab
+            onClick={() => setPlantOpen(true)}
+            hidden={
+              firstTime ||
+              panelOpen ||
+              fallenOpen ||
+              shareOpen ||
+              plantOpen ||
+              confirmTarget !== null
+            }
+          />
 
-      <PlantModal
-        open={plantOpen}
-        fieldMode={fieldMode}
-        defaultLead={defaultLead}
-        onClose={firstTime ? undefined : () => setPlantOpen(false)}
-        onPlanted={(treeId) => {
-          setPlantOpen(false);
-          setSelectedTreeId(null);
-          requestFocus(treeId);
-          router.refresh();
-        }}
-      />
+          <PlantModal
+            open={plantOpen}
+            fieldMode={fieldMode}
+            defaultLead={defaultLead}
+            onClose={firstTime ? undefined : () => setPlantOpen(false)}
+            onPlanted={(treeId) => {
+              setPlantOpen(false);
+              setSelectedTreeId(null);
+              requestFocus(treeId);
+              router.refresh();
+            }}
+          />
+        </>
+      )}
 
       <FieldFooter
         treeCount={trees.length}

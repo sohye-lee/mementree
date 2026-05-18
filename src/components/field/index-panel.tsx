@@ -20,6 +20,8 @@ export interface IndexTree {
 interface Props {
   trees: IndexTree[];
   selectedTreeId: string | null;
+  // visitors can browse the list but not plant
+  canPlant: boolean;
   onSelectTree: (id: string) => void;
   onPlant: () => void;
 }
@@ -29,6 +31,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 export function IndexPanel({
   trees,
   selectedTreeId,
+  canPlant,
   onSelectTree,
   onPlant,
 }: Props) {
@@ -105,9 +108,11 @@ export function IndexPanel({
         )}
       </ul>
 
-      <button type="button" className={styles.plant} onClick={onPlant}>
-        {c.plant}
-      </button>
+      {canPlant && (
+        <button type="button" className={styles.plant} onClick={onPlant}>
+          {c.plant}
+        </button>
+      )}
     </aside>
   );
 }

@@ -157,11 +157,16 @@ export async function tieMemo(
   if (!text) return { ok: false, error: 'textRequired' };
   if (!treeId) return { ok: false, error: 'serverError' };
 
-  const ctx = await requireKeeperField();
-  if (!ctx) return { ok: false, error: 'serverError' };
-  const { supabase, user } = ctx;
+  // a memo may be tied by the keeper OR by any signed-in visitor — so this
+  // does not require field ownership. RLS gates the insert: a signed-in
+  // user may tie a memo to any living public/shared tree (or their own).
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'serverError' };
 
-  // confirm tree exists in keeper's field (rls helps but we want a clean error)
+  // the tree must be visible to this user (RLS scopes the select).
   const { data: tree } = await supabase
     .from('trees')
     .select('id')
@@ -200,7 +205,8 @@ export async function tieMemo(
     .single();
   if (error || !inserted) return { ok: false, error: 'serverError' };
 
-  revalidatePath('/');
+  // revalidate every field route — the memo may live on a visited field
+  revalidatePath('/', 'layout');
   return { ok: true, memoId: inserted.id as string };
 }
 

@@ -34,11 +34,16 @@ interface Props {
   memos: DetailMemo[];
   fieldMode: FieldMode | null;
   defaultAuthor: string;
+  // keeper-only controls: wither, let-memo-fall, visibility toggle
+  canManage: boolean;
+  // keeper or signed-in visitor: the memo composer
+  canMemo: boolean;
   onClose: () => void;
   onRequestWither: (treeId: string) => void;
   onRequestMemoFall: (memoId: string) => void;
   onOpenMemo: (index: number) => void;
   onSetAccess: (treeId: string, access: TreeAccess) => void;
+  onMemoTied: () => void;
 }
 
 export function DetailPanel({
@@ -46,11 +51,14 @@ export function DetailPanel({
   memos,
   fieldMode,
   defaultAuthor,
+  canManage,
+  canMemo,
   onClose,
   onRequestWither,
   onRequestMemoFall,
   onOpenMemo,
   onSetAccess,
+  onMemoTied,
 }: Props) {
   const isOpen = tree !== null;
   const lastTreeRef = useRef<DetailTree | null>(tree);
@@ -88,8 +96,9 @@ export function DetailPanel({
       setText('');
       setAuthor(defaultAuthor);
       emitToast(copy.toast.memoTied);
+      onMemoTied();
     }
-  }, [state.ok, state.memoId, defaultAuthor]);
+  }, [state.ok, state.memoId, defaultAuthor, onMemoTied]);
 
   // clear composer when switching trees
   useEffect(() => {
@@ -121,13 +130,15 @@ export function DetailPanel({
                 {ordStr} · {modeWord}
               </span>
               <div className={styles.eyebrowActions}>
-                <button
-                  type="button"
-                  className={styles.witherBtn}
-                  onClick={() => onRequestWither(shown.id)}
-                >
-                  {c.witherButton}
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    className={styles.witherBtn}
+                    onClick={() => onRequestWither(shown.id)}
+                  >
+                    {c.witherButton}
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.closeBtn}
@@ -162,15 +173,17 @@ export function DetailPanel({
               {shown.description || c.descPlaceholder}
             </p>
 
-            <div className={styles.accessRow}>
-              <span className={styles.accessLabel}>
-                {copy.treeAccess.label}
-              </span>
-              <AccessToggle
-                value={shown.access}
-                onChange={(v) => onSetAccess(shown.id, v)}
-              />
-            </div>
+            {canManage && (
+              <div className={styles.accessRow}>
+                <span className={styles.accessLabel}>
+                  {copy.treeAccess.label}
+                </span>
+                <AccessToggle
+                  value={shown.access}
+                  onChange={(v) => onSetAccess(shown.id, v)}
+                />
+              </div>
+            )}
           </div>
 
           <div className={styles.body}>
@@ -204,17 +217,19 @@ export function DetailPanel({
                       <span className={styles.memoAuthor}>
                         — {m.author || c.anon}
                       </span>
-                      <button
-                        type="button"
-                        className={styles.memoFallBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRequestMemoFall(m.id);
-                        }}
-                        title={c.letMemoFall}
-                      >
-                        {c.letMemoFall}
-                      </button>
+                      {canManage && (
+                        <button
+                          type="button"
+                          className={styles.memoFallBtn}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRequestMemoFall(m.id);
+                          }}
+                          title={c.letMemoFall}
+                        >
+                          {c.letMemoFall}
+                        </button>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -222,9 +237,10 @@ export function DetailPanel({
             )}
           </div>
 
-          <form className={styles.foot} action={formAction} noValidate>
-            <input type="hidden" name="treeId" value={shown.id} />
-            <div className={styles.composerLabel}>{c.composer.title}</div>
+          {canMemo && (
+            <form className={styles.foot} action={formAction} noValidate>
+              <input type="hidden" name="treeId" value={shown.id} />
+              <div className={styles.composerLabel}>{c.composer.title}</div>
             <input
               className={styles.composerInput}
               type="text"
@@ -258,10 +274,11 @@ export function DetailPanel({
                 {pending ? c.composer.submitting : `${c.composer.submit} →`}
               </button>
             </div>
-            {composerErr && (
-              <p className={styles.composerError}>{composerErr}</p>
-            )}
-          </form>
+              {composerErr && (
+                <p className={styles.composerError}>{composerErr}</p>
+              )}
+            </form>
+          )}
         </>
       )}
     </aside>

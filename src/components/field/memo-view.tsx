@@ -15,6 +15,8 @@ interface Props {
   index: number;
   total: number;
   treeName: string;
+  // keeper-only: the "let fall" control
+  canManage: boolean;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -26,6 +28,7 @@ export function MemoView({
   index,
   total,
   treeName,
+  canManage,
   onClose,
   onPrev,
   onNext,
@@ -110,15 +113,17 @@ export function MemoView({
             </button>
           </div>
 
-          <div className={styles.fallRow}>
-            <button
-              type="button"
-              className={styles.fallBtn}
-              onClick={() => onLetFall(shown.id)}
-            >
-              {copy.detail.letMemoFall}
-            </button>
-          </div>
+          {canManage && (
+            <div className={styles.fallRow}>
+              <button
+                type="button"
+                className={styles.fallBtn}
+                onClick={() => onLetFall(shown.id)}
+              >
+                {copy.detail.letMemoFall}
+              </button>
+            </div>
+          )}
         </>
       )}
     </aside>
