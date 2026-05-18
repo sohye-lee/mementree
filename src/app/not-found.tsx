@@ -1,25 +1,30 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Logo } from '@/components/brand/logo';
 import { copy } from '@/lib/copy';
+import { createNotFoundScene } from '@/lib/three/not-found-scene';
 import styles from './not-found.module.css';
 
-const c = copy.notFound;
-
-export const metadata = {
-  title: 'mementree · not found',
-};
+// 404 — a small field of five trees with a wooden picket sign in the
+// middle carrying the not-found copy. the 3d scene lives in
+// src/lib/three/not-found-scene.ts.
 
 export default function NotFound() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const scene = createNotFoundScene(canvas);
+    return () => scene.dispose();
+  }, []);
+
   return (
     <main className={styles.main}>
-      <div className={styles.mark}>
-        <Logo size={56} />
-      </div>
-      <div className={styles.code}>{c.code}</div>
-      <h1 className={styles.title}>{c.title}</h1>
-      <p className={styles.sub}>{c.sub}</p>
+      <canvas ref={canvasRef} className={styles.canvas} />
       <Link href="/" className={styles.back}>
-        {c.back}
+        {copy.notFound.back}
       </Link>
     </main>
   );
