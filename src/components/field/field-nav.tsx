@@ -16,6 +16,7 @@ interface Props {
   selectedOrd: number | null;
   fallenCount: number;
   onFallenClick: () => void;
+  onShareClick: () => void;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -25,6 +26,7 @@ export function FieldNav({
   selectedOrd,
   fallenCount,
   onFallenClick,
+  onShareClick,
 }: Props) {
   return (
     <header className={styles.top}>
@@ -43,7 +45,14 @@ export function FieldNav({
         <Clock />
         <button
           type="button"
-          className={styles.fallenLink}
+          className={styles.navBtn}
+          onClick={onShareClick}
+        >
+          {copy.share.navLabel}
+        </button>
+        <button
+          type="button"
+          className={styles.navBtn}
           onClick={onFallenClick}
           aria-label={copy.fallen.eyebrow}
         >

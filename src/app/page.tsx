@@ -34,7 +34,7 @@ export default async function Home() {
 
   let { data: field } = await supabase
     .from('fields')
-    .select('id, mode')
+    .select('id, mode, slug')
     .eq('owner_id', user.id)
     .maybeSingle();
 
@@ -47,7 +47,7 @@ export default async function Home() {
         title: 'field',
         mode: null,
       })
-      .select('id, mode')
+      .select('id, mode, slug')
       .single();
     field = created;
   }
@@ -172,6 +172,8 @@ export default async function Home() {
 
   return (
     <FieldChrome
+      handle={profile?.handle ?? 'keeper'}
+      slug={(field?.slug as string | undefined) ?? 'field'}
       trees={trees}
       fallen={fallen}
       firstTime={firstTime}

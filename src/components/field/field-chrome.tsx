@@ -21,6 +21,7 @@ import { IndexPanel, type IndexTree } from './index-panel';
 import { MemoView } from './memo-view';
 import { PlantFab } from './fab';
 import { PlantModal } from './plant-modal';
+import { ShareModal } from './share-modal';
 import { Toaster } from './toast';
 
 export interface FieldTreeData extends SceneTree {
@@ -34,6 +35,8 @@ export interface FieldTreeData extends SceneTree {
 }
 
 interface Props {
+  handle: string;
+  slug: string;
   trees: FieldTreeData[];
   fallen: FallenItem[];
   firstTime: boolean;
@@ -47,6 +50,8 @@ type ConfirmTarget =
   | null;
 
 export function FieldChrome({
+  handle,
+  slug,
   trees,
   fallen,
   firstTime,
@@ -56,6 +61,7 @@ export function FieldChrome({
   const [plantOpen, setPlantOpen] = useState(firstTime);
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [fallenOpen, setFallenOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   // tree to fly the camera to; focusNonce bumps on every request so
   // re-selecting the same tree re-centers it.
@@ -198,6 +204,7 @@ export function FieldChrome({
         selectedOrd={selectedTree?.ord ?? null}
         fallenCount={fallen.length}
         onFallenClick={() => setFallenOpen(true)}
+        onShareClick={() => setShareOpen(true)}
       />
 
       <FieldCanvas
@@ -260,6 +267,13 @@ export function FieldChrome({
         onClose={() => setFallenOpen(false)}
       />
 
+      <ShareModal
+        open={shareOpen}
+        handle={handle}
+        slug={slug}
+        onClose={() => setShareOpen(false)}
+      />
+
       <ConfirmModal
         open={confirmTarget !== null}
         variant={confirmTarget?.kind ?? 'witherTree'}
@@ -273,6 +287,7 @@ export function FieldChrome({
           firstTime ||
           panelOpen ||
           fallenOpen ||
+          shareOpen ||
           plantOpen ||
           confirmTarget !== null
         }

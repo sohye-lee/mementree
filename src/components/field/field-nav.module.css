@@ -57,7 +57,7 @@
   letter-spacing: 0.04em;
 }
 
-.fallenLink {
+.navBtn {
   position: relative;
   appearance: none;
   border: 1px solid transparent;
@@ -75,7 +75,7 @@
   transition: color 160ms, border-color 160ms;
 }
 
-.fallenLink:hover {
+.navBtn:hover {
   color: var(--ink);
   border-color: var(--ink-20);
 }

@@ -158,6 +158,23 @@ export const copy = {
     sharedHint: 'signed-in visitors only',
   },
 
+  share: {
+    navLabel: '↗ share',
+    title: 'share your field',
+    lede: 'anyone with this link can walk your field and read it.',
+    linkLabel: 'field link',
+    copy: 'copy link',
+    copied: 'link copied',
+    noteTitle: 'what visitors can do',
+    notes: [
+      'public trees — anyone with the link',
+      'shared trees — signed-in visitors only',
+      'signed-in visitors can tie memos',
+      'planting and withering stay yours',
+    ],
+    close: 'close',
+  },
+
   detail: {
     modeWord: {
       project: 'project',
