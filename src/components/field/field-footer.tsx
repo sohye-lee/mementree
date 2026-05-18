@@ -80,9 +80,16 @@ export function FieldFooter({
         </span>
       </div>
 
-      <button type="button" className={styles.recenter} onClick={onRecenter}>
-        {c.recenter}
-      </button>
+      <div className={styles.right}>
+        <span className={styles.credit}>{c.credit}</span>
+        <button
+          type="button"
+          className={styles.recenter}
+          onClick={onRecenter}
+        >
+          {c.recenter}
+        </button>
+      </div>
     </footer>
   );
 }

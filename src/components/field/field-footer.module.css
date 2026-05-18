@@ -89,9 +89,22 @@
   color: var(--ink-70);
 }
 
-/* recenter — right */
-.recenter {
+/* right — credit + recenter */
+.right {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.credit {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-30);
+  white-space: nowrap;
+}
+
+.recenter {
   appearance: none;
   border: 1px solid transparent;
   background: transparent;
@@ -116,6 +129,13 @@
   }
   .bar {
     grid-template-columns: 1fr auto;
+  }
+}
+
+/* tighter screens — drop the credit so the env strip keeps room */
+@media (max-width: 560px) {
+  .credit {
+    display: none;
   }
 }
 

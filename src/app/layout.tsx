@@ -18,6 +18,7 @@ const sans = Inter({
 export const metadata: Metadata = {
   title: 'mementree',
   description: 'a quiet field, kept for you.',
+  authors: [{ name: 'sohye' }],
 };
 
 export default function RootLayout({

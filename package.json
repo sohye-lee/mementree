@@ -2,6 +2,7 @@
   "name": "mementree",
   "version": "0.1.0",
   "private": true,
+  "author": "sohye",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

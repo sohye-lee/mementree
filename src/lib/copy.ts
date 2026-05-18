@@ -16,7 +16,7 @@ export const copy = {
       'plant trees as projects, wishes, days. tie memos to their branches. come back from any device, any year, and the field will be where you left it.',
     leftLine:
       'a field is what you walk through —\nbut only if someone keeps it.',
-    leftFoot: 'est. 2026',
+    leftFoot: '© 2026 sohye',
 
     enter: {
       title: 'welcome back, or hello.',
@@ -62,6 +62,7 @@ export const copy = {
     trees: 'trees',
     memos: 'memos',
     recenter: '↑ recenter',
+    credit: '© 2026 sohye',
     hint: { walk: 'walk', look: 'look', tree: 'tree' },
     // env strip is clickable to resolve real location (geolocation opt-in)
     locateTitle: 'use my location',
