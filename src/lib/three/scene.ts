@@ -4,7 +4,7 @@
 // + dispose. react components mount this; they don't import three directly.
 
 import * as THREE from 'three';
-import { createControls, type FieldControls } from './controls';
+import { createControls } from './controls';
 import {
   disposeNoteGroup,
   disposeSharedNoteMaterials,
@@ -15,9 +15,10 @@ import {
 } from './note-mesh';
 import { makeGroundTexture, makeVignetteTexture } from './textures';
 import { createTreeFactory, type TreeFactory } from './tree-mesh';
-import { mulberry32 } from '@/lib/seed';
+import { hashStr, mulberry32 } from '@/lib/seed';
 
 const PAPER = 0xf4f4f1;
+const WITHER_DURATION = 1400;
 
 export interface SceneTree {
   id: string;
@@ -41,6 +42,12 @@ export interface SceneController {
 }
 
 const CLICK_DRAG_THRESHOLD = 6;
+
+interface WitheringEntry {
+  group: THREE.Group;
+  noteGroups: NoteGroup[];
+  start: number;
+}
 
 export function createScene(
   canvas: HTMLCanvasElement,
@@ -108,9 +115,11 @@ export function createScene(
   const treeFactory: TreeFactory = createTreeFactory();
   const treeGroups = new Map<string, THREE.Group>();
   const treeSeeds = new Map<string, number>();
-  // notes are organized as: treeId → memoId → NoteGroup, kept inside a
-  // dedicated subgroup of the tree group so wither/remove cleans both.
   const treeNoteGroups = new Map<string, Map<string, NoteGroup>>();
+  // trees mid-wither: kept in-scene to animate, disposed when the anim ends.
+  const witheringTrees: WitheringEntry[] = [];
+  // live falling-paper dom overlays — cleaned up on dispose if still animating.
+  const fallingPapers = new Set<HTMLElement>();
   let hoveredId: string | null = null;
   let activeId: string | null = null;
 
@@ -128,17 +137,17 @@ export function createScene(
     treeNoteGroups.set(tree.id, new Map());
   }
 
+  // start a wither animation. the tree leaves the active maps immediately
+  // (no longer pickable / re-addable), but stays in-scene until the anim ends.
   function removeTree(id: string) {
     const g = treeGroups.get(id);
     if (!g) return;
-    // dispose note groups first
     const noteMap = treeNoteGroups.get(id);
-    if (noteMap) {
-      for (const ng of noteMap.values()) disposeNoteGroup(ng);
-      noteMap.clear();
-    }
-    scene.remove(g);
-    treeFactory.disposeTreeGroup(g);
+    witheringTrees.push({
+      group: g,
+      noteGroups: noteMap ? Array.from(noteMap.values()) : [],
+      start: performance.now(),
+    });
     treeGroups.delete(id);
     treeSeeds.delete(id);
     treeNoteGroups.delete(id);
@@ -171,10 +180,53 @@ export function createScene(
     if (id) applyRingState(id);
   }
 
+  // ──── falling paper (2d dom overlay) ────────────────────────────────────────
+  // ported from design/memoir-field.js `spawnFallingPaper`: project the note's
+  // world position to screen coords, drop a small paper div, let css flutter it
+  // down and fade. decoupled from the 3d scene by design.
+  function spawnFallingPaper(worldPos: THREE.Vector3) {
+    const v = worldPos.clone().project(camera);
+    if (v.z > 1) return; // behind camera
+    const sx = (v.x * 0.5 + 0.5) * window.innerWidth;
+    const sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
+
+    const el = document.createElement('div');
+    Object.assign(el.style, {
+      position: 'fixed',
+      pointerEvents: 'none',
+      zIndex: '35',
+      width: '36px',
+      height: '44px',
+      background: 'linear-gradient(180deg, #FFFDF6 0%, #F2EFE4 100%)',
+      border: '1px solid rgba(60,40,20,0.18)',
+      boxShadow: '0 4px 10px -4px rgba(40,30,15,0.25)',
+      transformOrigin: '50% 0%',
+      willChange: 'transform, opacity',
+      transition:
+        'transform 1100ms cubic-bezier(.4,.2,.2,1), opacity 1100ms ease-out',
+      left: `${sx - 18}px`,
+      top: `${sy}px`,
+    } satisfies Partial<CSSStyleDeclaration>);
+    document.body.appendChild(el);
+    fallingPapers.add(el);
+
+    const drift = (Math.random() - 0.5) * 60;
+    const fallY = window.innerHeight - sy - 40;
+    const spin = (Math.random() - 0.5) * 180;
+    requestAnimationFrame(() => {
+      el.style.transform = `translate(${drift}px, ${fallY}px) rotate(${spin}deg)`;
+      el.style.opacity = '0';
+    });
+    window.setTimeout(() => {
+      el.remove();
+      fallingPapers.delete(el);
+    }, 1200);
+  }
+
   // ──── memos ────────────────────────────────────────────────────────────────
-  // assigns tips deterministically per tree so memo positions stay stable
-  // across renders. shuffled order via a seeded rng on the tree's seed.
-  function pickTipForMemo(treeId: string, memoIndex: number): THREE.Vector3 | null {
+  // tip for a memo is stable per memo id: pick from a per-tree shuffled tip
+  // list, indexed by hash(memoId). removing one memo never moves the others.
+  function pickTipForMemo(treeId: string, memoId: string): THREE.Vector3 | null {
     const g = treeGroups.get(treeId);
     const seed = treeSeeds.get(treeId);
     if (!g || seed == null) return null;
@@ -185,7 +237,7 @@ export function createScene(
       .map((p) => ({ p, k: rng() }))
       .sort((a, b) => a.k - b.k)
       .map((o) => o.p);
-    return ordered[memoIndex % ordered.length];
+    return ordered[hashStr(memoId) % ordered.length];
   }
 
   function syncMemos(treeId: string, memos: NoteInput[]) {
@@ -196,24 +248,27 @@ export function createScene(
 
     const incomingIds = new Set(memos.map((m) => m.id));
 
-    // remove gone
+    // remove gone — each gets a falling-paper send-off
     for (const [id, ng] of noteMap.entries()) {
       if (!incomingIds.has(id)) {
+        const wp = new THREE.Vector3();
+        ng.userData.plane.getWorldPosition(wp);
+        spawnFallingPaper(wp);
         notesGrp.remove(ng);
         disposeNoteGroup(ng);
         noteMap.delete(id);
       }
     }
 
-    // add new (preserves existing positions/animations)
-    memos.forEach((memo, idx) => {
-      if (noteMap.has(memo.id)) return;
-      const tip = pickTipForMemo(treeId, idx);
-      if (!tip) return;
+    // add new
+    for (const memo of memos) {
+      if (noteMap.has(memo.id)) continue;
+      const tip = pickTipForMemo(treeId, memo.id);
+      if (!tip) continue;
       const ng = makeNoteMesh(memo, tip, treeId);
       noteMap.set(memo.id, ng);
       notesGrp.add(ng);
-    });
+    }
   }
 
   // seed initial trees
@@ -325,6 +380,49 @@ export function createScene(
   window.addEventListener('resize', resize);
   resize();
 
+  // wither animation step — gray + sink + fade. ring (LineLoop) and string
+  // (Line) are skipped by the isMesh check, so only per-tree / per-note
+  // materials are mutated; shared ring materials stay untouched.
+  function stepWither(now: number) {
+    for (let i = witheringTrees.length - 1; i >= 0; i--) {
+      const w = witheringTrees[i];
+      const k = Math.min(1, (now - w.start) / WITHER_DURATION);
+      const e = k * k;
+      w.group.traverse((c) => {
+        if (!(c instanceof THREE.Mesh)) return;
+        const mat = c.material;
+        if (Array.isArray(mat) || !mat || !('color' in mat)) return;
+        const m = mat as THREE.MeshStandardMaterial;
+        if (!c.userData._origColor && m.color) {
+          c.userData._origColor = m.color.clone();
+        }
+        if (!m.transparent) {
+          m.transparent = true;
+          m.needsUpdate = true;
+        }
+        const oc = c.userData._origColor as THREE.Color | undefined;
+        if (oc) {
+          const gray = 0.78;
+          m.color.setRGB(
+            oc.r * (1 - e) + gray * e,
+            oc.g * (1 - e) + gray * e,
+            oc.b * (1 - e) + gray * e,
+          );
+        }
+        m.opacity = 1 - e * 0.85;
+      });
+      w.group.position.y = -e * 0.4;
+      w.group.rotation.z = e * 0.06;
+
+      if (k >= 1) {
+        scene.remove(w.group);
+        treeFactory.disposeTreeGroup(w.group);
+        for (const ng of w.noteGroups) disposeNoteGroup(ng);
+        witheringTrees.splice(i, 1);
+      }
+    }
+  }
+
   // loop
   let animId = 0;
   let last = performance.now();
@@ -333,7 +431,7 @@ export function createScene(
     const tSec = now / 1000;
     last = now;
     controls.update(dt, camera);
-    // sway memos
+    stepWither(now);
     for (const noteMap of treeNoteGroups.values()) {
       for (const ng of noteMap.values()) updateNoteSway(ng, tSec);
     }
@@ -358,6 +456,13 @@ export function createScene(
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
       controls.dispose();
+      for (const el of fallingPapers) el.remove();
+      fallingPapers.clear();
+      for (const w of witheringTrees) {
+        treeFactory.disposeTreeGroup(w.group);
+        for (const ng of w.noteGroups) disposeNoteGroup(ng);
+      }
+      witheringTrees.length = 0;
       for (const noteMap of treeNoteGroups.values()) {
         for (const ng of noteMap.values()) disposeNoteGroup(ng);
         noteMap.clear();
