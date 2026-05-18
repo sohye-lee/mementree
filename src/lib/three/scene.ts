@@ -15,11 +15,25 @@ import {
 } from './note-mesh';
 import { makeGroundTexture, makeVignetteTexture } from './textures';
 import { createTreeFactory, type TreeFactory } from './tree-mesh';
+import { createRain, createSnow, type WeatherSystem } from './weather';
 import { reportCamera } from '@/lib/field-frame';
+import type { Phase, Weather } from '@/lib/environment';
 import { hashStr, mulberry32 } from '@/lib/seed';
 
 const PAPER = 0xf4f4f1;
 const WITHER_DURATION = 1700;
+
+// sun phase → sky tint + light multiplier. kept subtle: the field stays
+// "paper" — it grades warm at dawn/dusk, cool-dim at night, never goes dark.
+const PHASE_LOOK: Record<Phase, { bg: number; light: number }> = {
+  dawn: { bg: 0xf1e9dd, light: 0.8 },
+  morning: { bg: 0xf4f4f1, light: 1.0 },
+  afternoon: { bg: 0xf4f4f1, light: 1.0 },
+  dusk: { bg: 0xece0d2, light: 0.76 },
+  night: { bg: 0xc4c6cd, light: 0.55 },
+};
+
+const LIGHT_BASE = { hemi: 0.85, sun: 0.9, fill: 0.35 };
 
 export interface SceneTree {
   id: string;
@@ -43,6 +57,8 @@ export interface SceneController {
   focusTree: (id: string) => void;
   // fly the camera back to its default framing of the field
   recenter: () => void;
+  // apply sun phase (sky tint + light) and weather (rain/snow particles)
+  setEnvironment: (phase: Phase | null, weather: Weather) => void;
   dispose: () => void;
 }
 
@@ -68,8 +84,10 @@ export function createScene(
   renderer.shadowMap.enabled = false;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(PAPER);
-  scene.fog = new THREE.Fog(PAPER, 18, 70);
+  const bgColor = new THREE.Color(PAPER);
+  scene.background = bgColor;
+  const fog = new THREE.Fog(PAPER, 18, 70);
+  scene.fog = fog;
 
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
   camera.position.set(0, 1.8, 12);
@@ -377,6 +395,35 @@ export function createScene(
     );
   }
 
+  // ── environment ─────────────────────────────────────────────────────────────
+  let weatherSystem: WeatherSystem | null = null;
+  let weatherKind: Weather = 'clear';
+
+  function setEnvironment(phase: Phase | null, weather: Weather) {
+    // sun phase → sky tint + light. null = leave at the paper default.
+    if (phase) {
+      const look = PHASE_LOOK[phase];
+      bgColor.setHex(look.bg);
+      fog.color.setHex(look.bg);
+      renderer.setClearColor(bgColor, 1);
+      hemi.intensity = LIGHT_BASE.hemi * look.light;
+      sun.intensity = LIGHT_BASE.sun * look.light;
+      fill.intensity = LIGHT_BASE.fill * look.light;
+    }
+    // weather → rain / snow particle system (clear / cloudy / fog = none)
+    if (weather !== weatherKind) {
+      if (weatherSystem) {
+        scene.remove(weatherSystem.object);
+        weatherSystem.dispose();
+        weatherSystem = null;
+      }
+      if (weather === 'rain') weatherSystem = createRain();
+      else if (weather === 'snow') weatherSystem = createSnow();
+      if (weatherSystem) scene.add(weatherSystem.object);
+      weatherKind = weather;
+    }
+  }
+
   // raycast
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -527,6 +574,7 @@ export function createScene(
       camera.position.z,
     );
     stepWither(now, dt);
+    weatherSystem?.update(dt);
     for (const noteMap of treeNoteGroups.values()) {
       for (const ng of noteMap.values()) updateNoteSway(ng, tSec);
     }
@@ -543,8 +591,14 @@ export function createScene(
     syncMemos,
     focusTree,
     recenter,
+    setEnvironment,
     dispose() {
       cancelAnimationFrame(animId);
+      if (weatherSystem) {
+        scene.remove(weatherSystem.object);
+        weatherSystem.dispose();
+        weatherSystem = null;
+      }
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);

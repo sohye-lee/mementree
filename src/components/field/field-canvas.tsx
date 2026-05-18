@@ -7,6 +7,7 @@ import {
   type SceneTree,
 } from '@/lib/three/scene';
 import type { NoteInput } from '@/lib/three/note-mesh';
+import type { Phase, Weather } from '@/lib/environment';
 import styles from './field-canvas.module.css';
 
 interface Props {
@@ -17,6 +18,9 @@ interface Props {
   focusTreeId: string | null;
   // bump this number to fly the camera back to its default framing
   recenterNonce: number;
+  // environment — sun phase + weather, applied to the scene
+  phase: Phase | null;
+  weather: Weather;
   onTreeClick: (id: string | null) => void;
 }
 
@@ -26,6 +30,8 @@ export function FieldCanvas({
   selectedTreeId,
   focusTreeId,
   recenterNonce,
+  phase,
+  weather,
   onTreeClick,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -100,6 +106,11 @@ export function FieldCanvas({
       sceneRef.current?.recenter();
     }
   }, [recenterNonce]);
+
+  // apply environment (sky phase + weather)
+  useEffect(() => {
+    sceneRef.current?.setEnvironment(phase, weather);
+  }, [phase, weather]);
 
   return <canvas ref={canvasRef} className={styles.canvas} />;
 }

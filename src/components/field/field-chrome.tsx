@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { letMemoFall, witherTree } from '@/app/actions';
 import { copy } from '@/lib/copy';
 import { emitToast } from '@/lib/toast-bus';
+import { useEnvironment } from '@/lib/use-environment';
 import type { FieldMode } from '@/types/domain';
 import type { NoteInput } from '@/lib/three/note-mesh';
 import type { SceneTree } from '@/lib/three/scene';
@@ -64,6 +65,10 @@ export function FieldChrome({
   // index into the selected tree's memos for the fullscreen-ish memo reader
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const router = useRouter();
+
+  // local sky — sun phase, season, weather (default us east; geolocation
+  // opt-in via the footer's env strip)
+  const env = useEnvironment();
 
   // memo viewer closes whenever the selected tree changes
   useEffect(() => {
@@ -183,6 +188,8 @@ export function FieldChrome({
         selectedTreeId={selectedTreeId}
         focusTreeId={focusTreeId}
         recenterNonce={recenterNonce}
+        phase={env.phase}
+        weather={env.weather}
         onTreeClick={handleTreeClick}
       />
 
@@ -267,10 +274,10 @@ export function FieldChrome({
       <FieldFooter
         treeCount={trees.length}
         memoCount={memoCount}
-        season={null}
-        phase={null}
-        locating={false}
-        onLocate={() => {}}
+        season={env.season}
+        phase={env.phase}
+        locating={env.locating}
+        onLocate={env.requestLocation}
         onRecenter={() => setRecenterNonce((n) => n + 1)}
       />
 
