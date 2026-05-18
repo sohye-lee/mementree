@@ -67,6 +67,15 @@ export const copy = {
     locateTitle: 'use my location',
   },
 
+  index: {
+    title: '[ index ]',
+    searchPlaceholder: 'search trees, memos…',
+    plant: '+ plant a tree',
+    empty: 'no trees yet.',
+    noMatch: 'nothing matches.',
+    memoCountSuffix: 'memos',
+  },
+
   plant: {
     cancel: 'cancel',
     submitting: 'planting…',

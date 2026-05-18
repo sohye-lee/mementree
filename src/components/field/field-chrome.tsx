@@ -14,6 +14,7 @@ import { FallenTray, type FallenItem } from './fallen-tray';
 import { FieldCanvas } from './field-canvas';
 import { FieldFooter } from './field-footer';
 import { FieldNav } from './field-nav';
+import { IndexPanel, type IndexTree } from './index-panel';
 import { MemoView } from './memo-view';
 import { PlantFab } from './fab';
 import { PlantModal } from './plant-modal';
@@ -69,6 +70,23 @@ export function FieldChrome({
 
   const memoCount = useMemo(
     () => trees.reduce((sum, t) => sum + t.memos.length, 0),
+    [trees],
+  );
+
+  const indexTrees = useMemo<IndexTree[]>(
+    () =>
+      trees.map((t) => ({
+        id: t.id,
+        ord: t.ord,
+        name: t.name,
+        lead: t.lead,
+        year: t.year,
+        memoCount: t.memos.length,
+        memoHaystack: t.memos
+          .map((m) => m.text)
+          .join(' ')
+          .toLowerCase(),
+      })),
     [trees],
   );
 
@@ -164,6 +182,16 @@ export function FieldChrome({
         focusTreeId={focusTreeId}
         recenterNonce={recenterNonce}
         onTreeClick={handleTreeClick}
+      />
+
+      <IndexPanel
+        trees={indexTrees}
+        selectedTreeId={selectedTreeId}
+        onSelectTree={(id) => {
+          setSelectedTreeId(id);
+          setFocusTreeId(id);
+        }}
+        onPlant={() => setPlantOpen(true)}
       />
 
       <DetailPanel
