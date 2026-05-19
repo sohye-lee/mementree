@@ -1,34 +1,19 @@
-// the 404 scene — a wooden picket sign in the foreground with five trees
-// scattered far off in the haze. the camera drifts in one slow direction
-// around the sign; the sign billboards to keep facing the camera so its
-// copy stays readable. mounted by src/app/not-found.tsx.
+// the 404 scene — always night. a wooden picket sign holds the not-found
+// copy; pale-grey trees scatter in a full ring around it, fading into the
+// dark fog so the field reads as endless. the camera drifts one direction
+// so slowly it's almost still. mounted by src/app/not-found.tsx.
 
 import * as THREE from 'three';
 import { copy } from '@/lib/copy';
-import { hashStr } from '@/lib/seed';
-import {
-  makeBarkTexture,
-  makeGroundTexture,
-  makeVignetteTexture,
-} from './textures';
+import { hashStr, mulberry32 } from '@/lib/seed';
+import { makeGroundTexture } from './textures';
 import { createTreeFactory } from './tree-mesh';
 
-const PAPER = 0xf4f4f1;
-const WOOD = 0x4a3a2a;
-
-// one slow continuous turn, one direction. ~0.03 rad/s ≈ 3.5 min/turn —
-// about a fifth of the old left-right sway speed.
-const ORBIT_SPEED = 0.03;
+const NIGHT_BG = 0x1a1c24;
+// near-still: ~0.004 rad/s ≈ 26 min per turn
+const ORBIT_SPEED = 0.004;
 const ORBIT_RADIUS = 7.5;
-
-// five trees — [x, z, scale]. far behind the sign: distant, fog-softened.
-const TREES: ReadonlyArray<readonly [number, number, number]> = [
-  [-15, -24, 0.95],
-  [17, -30, 0.9],
-  [-22, -34, 0.8],
-  [21, -26, 0.86],
-  [3, -44, 0.78],
-];
+const TREE_COUNT = 40;
 
 function wrap(
   ctx: CanvasRenderingContext2D,
@@ -62,11 +47,10 @@ function makeSignTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext('2d')!;
   const serif = "Georgia, 'Times New Roman', serif";
 
-  // soft neutral plank — slightly off the page's paper so it reads as a panel
+  // soft neutral plank — bright, so it glows against the night
   ctx.fillStyle = '#eae8e2';
   ctx.fillRect(0, 0, W, H);
 
-  // faint grain streaks (neutral grey)
   for (let i = 0; i < 44; i++) {
     ctx.strokeStyle = `rgba(120,120,116,${0.04 + Math.random() * 0.06})`;
     ctx.lineWidth = (1 + Math.random() * 2) * S;
@@ -84,7 +68,6 @@ function makeSignTexture(): THREE.CanvasTexture {
     ctx.stroke();
   }
 
-  // inset border
   ctx.strokeStyle = 'rgba(60,60,58,0.4)';
   ctx.lineWidth = 3 * S;
   ctx.strokeRect(22 * S, 22 * S, W - 44 * S, H - 44 * S);
@@ -92,12 +75,10 @@ function makeSignTexture(): THREE.CanvasTexture {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // 404 — serif, bold, full ink
   ctx.fillStyle = '#0a0a0a';
   ctx.font = `700 ${100 * S}px ${serif}`;
   ctx.fillText(copy.notFound.code, W / 2, 138 * S);
 
-  // title — serif
   ctx.font = `500 ${33 * S}px ${serif}`;
   const lines = wrap(ctx, copy.notFound.title, W - 150 * S);
   let y = 258 * S;
@@ -106,7 +87,6 @@ function makeSignTexture(): THREE.CanvasTexture {
     y += 46 * S;
   }
 
-  // sub — serif italic, dark enough to read clearly
   ctx.font = `italic 400 ${25 * S}px ${serif}`;
   ctx.fillStyle = 'rgba(28,28,28,0.78)';
   ctx.fillText(copy.notFound.sub, W / 2, y + 18 * S);
@@ -125,73 +105,77 @@ export function createNotFoundScene(
 ): NotFoundScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(PAPER, 1);
+  renderer.setClearColor(NIGHT_BG, 1);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(PAPER);
-  scene.fog = new THREE.Fog(PAPER, 18, 66);
+  scene.background = new THREE.Color(NIGHT_BG);
+  // fog far enough that the ring of trees fades gradually into the dark
+  scene.fog = new THREE.Fog(NIGHT_BG, 30, 100);
 
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 240);
   camera.position.set(0, 2.4, ORBIT_RADIUS);
 
-  // ground
+  // ground — the paper texture multiplied down to a dark night floor
   const groundTex = makeGroundTexture();
-  const groundMat = new THREE.MeshBasicMaterial({ map: groundTex });
+  const groundMat = new THREE.MeshBasicMaterial({
+    map: groundTex,
+    color: 0x2a2c36,
+  });
   const groundGeo = new THREE.PlaneGeometry(600, 600);
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
-  const vignetteTex = makeVignetteTexture();
-  const vignetteMat = new THREE.MeshBasicMaterial({
-    map: vignetteTex,
-    transparent: true,
-    depthWrite: false,
-  });
-  const vignetteGeo = new THREE.PlaneGeometry(220, 220);
-  const vignette = new THREE.Mesh(vignetteGeo, vignetteMat);
-  vignette.rotation.x = -Math.PI / 2;
-  vignette.position.y = 0.002;
-  scene.add(vignette);
-
-  const grid = new THREE.GridHelper(200, 100, 0xc9c9c5, 0xe0e0dc);
-  grid.position.y = 0.001;
-  const gridMat = grid.material as THREE.Material | THREE.Material[];
-  if (Array.isArray(gridMat)) {
-    gridMat.forEach((m) => {
-      m.transparent = true;
-      m.opacity = 0.1;
-    });
-  } else {
-    gridMat.transparent = true;
-    gridMat.opacity = 0.1;
+  // stars — fog-immune points scattered on an upper dome
+  const starRng = mulberry32(0x57a21);
+  const STAR_COUNT = 150;
+  const starPos = new Float32Array(STAR_COUNT * 3);
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const dir = new THREE.Vector3(
+      starRng() * 2 - 1,
+      starRng() * 0.9 + 0.14,
+      starRng() * 2 - 1,
+    ).normalize();
+    starPos[i * 3] = dir.x * 90;
+    starPos[i * 3 + 1] = dir.y * 90;
+    starPos[i * 3 + 2] = dir.z * 90;
   }
-  scene.add(grid);
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  const starMat = new THREE.PointsMaterial({
+    color: 0xd8d8e2,
+    size: 2,
+    sizeAttenuation: false,
+    transparent: true,
+    opacity: 0.85,
+    fog: false,
+  });
+  const stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
 
-  // lights
-  const hemi = new THREE.HemisphereLight(0xffffff, 0xbab8b2, 0.85);
-  scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-  sun.position.set(8, 12, 5);
-  scene.add(sun);
-  const fill = new THREE.DirectionalLight(0xd9d8d2, 0.35);
-  fill.position.set(-6, 4, -8);
-  scene.add(fill);
+  // pale-grey, unlit materials — at night the wood reads as light silhouette
+  const treeMat = new THREE.MeshBasicMaterial({ color: 0xcdcbc4 });
+  const postMat = new THREE.MeshBasicMaterial({ color: 0x9c9a94 });
 
-  // distant trees
+  // a full ring of trees — endless-looking, fog-faded
   const treeFactory = createTreeFactory();
   const treeGroups: THREE.Group[] = [];
-  TREES.forEach(([x, z, s], i) => {
+  const placeRng = mulberry32(0x404f1e1d);
+  for (let i = 0; i < TREE_COUNT; i++) {
+    const ang = placeRng() * Math.PI * 2;
+    const rad = 32 + placeRng() * 68; // 32..100 from the sign
     const g = treeFactory.makeTreeMesh(hashStr(`404-${i}`), `404-${i}`);
-    g.position.set(x, 0, z);
-    g.scale.setScalar(s);
+    g.position.set(Math.cos(ang) * rad, 0, Math.sin(ang) * rad);
+    g.scale.setScalar(0.6 + placeRng() * 0.8);
+    g.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.material = treeMat;
+    });
     scene.add(g);
     treeGroups.push(g);
-  });
+  }
 
   // ── wooden picket sign ──────────────────────────────────────────────────
-  // sign (outer) yaws to face the camera; signLean (inner) holds the
-  // organic lean + the post & board.
+  // sign (outer) yaws to face the camera; signLean (inner) holds the lean.
   const sign = new THREE.Group();
   const signLean = new THREE.Group();
   signLean.rotation.z = 0.022;
@@ -199,25 +183,17 @@ export function createNotFoundScene(
   sign.add(signLean);
   scene.add(sign);
 
-  // post — a bark-textured, tapered trunk (wider at the base)
-  const barkTex = makeBarkTexture();
+  // post — a tapered trunk (wider at the base), pale grey for the night
   const postGeo = new THREE.CylinderGeometry(0.085, 0.16, 2.5, 9, 1);
-  const postMat = new THREE.MeshStandardMaterial({
-    color: WOOD,
-    map: barkTex,
-    roughness: 0.96,
-  });
   const post = new THREE.Mesh(postGeo, postMat);
   post.position.y = 1.25;
   signLean.add(post);
 
-  // board — unlit so the plank stays evenly bright; pushed forward in z so
-  // the post sits behind it.
+  // board — unlit; bright plank that glows against the dark
   const signTex = makeSignTexture();
   const boardGeo = new THREE.BoxGeometry(3.0, 1.82, 0.1);
   const faceMat = new THREE.MeshBasicMaterial({ map: signTex });
   const edgeMat = new THREE.MeshBasicMaterial({ color: 0x9a958b });
-  // BoxGeometry face order: +x, -x, +y, -y, +z, -z — texture the z faces
   const board = new THREE.Mesh(boardGeo, [
     edgeMat,
     edgeMat,
@@ -240,7 +216,7 @@ export function createNotFoundScene(
   window.addEventListener('resize', resize);
   resize();
 
-  // loop — one slow continuous orbit; the sign billboards to keep facing us
+  // loop — one near-still orbit; the sign billboards to keep facing us
   let animId = 0;
   function loop(now: number) {
     const a = (now / 1000) * ORBIT_SPEED;
@@ -262,18 +238,14 @@ export function createNotFoundScene(
       window.removeEventListener('resize', resize);
       for (const g of treeGroups) treeFactory.disposeTreeGroup(g);
       treeFactory.dispose();
+      treeMat.dispose();
+      postMat.dispose();
       groundGeo.dispose();
       groundMat.dispose();
       groundTex.dispose();
-      vignetteGeo.dispose();
-      vignetteMat.dispose();
-      vignetteTex.dispose();
-      grid.geometry.dispose();
-      if (Array.isArray(gridMat)) gridMat.forEach((m) => m.dispose());
-      else gridMat.dispose();
+      starGeo.dispose();
+      starMat.dispose();
       postGeo.dispose();
-      postMat.dispose();
-      barkTex.dispose();
       boardGeo.dispose();
       faceMat.dispose();
       edgeMat.dispose();
