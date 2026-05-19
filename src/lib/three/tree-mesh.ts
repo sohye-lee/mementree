@@ -25,12 +25,19 @@ const RED = 0xc1410f;
 // selection actually look green.
 const SELECTED_GREEN = 0x6fb98a; // multiplied color
 const SELECTED_GREEN_GLOW = 0x3f8059; // emissive (texture-independent)
+// at night the trunk gets a pale emissive so trees read as light
+// silhouettes against the dark, like the 404 field.
+const NIGHT_TRUNK_GLOW = 0xb2b2ad;
 
 export type RingState = 'base' | 'hover' | 'active';
 
 export interface TreeFactory {
   makeTreeMesh: (seed: number, treeId: string) => THREE.Group;
-  setRingState: (group: THREE.Group, state: RingState) => void;
+  setRingState: (
+    group: THREE.Group,
+    state: RingState,
+    night: boolean,
+  ) => void;
   disposeTreeGroup: (group: THREE.Group) => void;
   dispose: () => void;
 }
@@ -185,11 +192,16 @@ export function createTreeFactory(): TreeFactory {
     return group;
   }
 
-  // state drives both the ground ring's color and the trunk tint:
+  // state drives the ground ring's color and the trunk look:
   //   active → red ring + deep-green trunk
   //   hover  → mint ring
   //   base   → faint ring + original trunk color
-  function setRingState(group: THREE.Group, state: RingState) {
+  // at night, a non-active trunk gets a pale emissive so it reads light.
+  function setRingState(
+    group: THREE.Group,
+    state: RingState,
+    night: boolean,
+  ) {
     const ring = group.userData.ring as THREE.LineLoop | undefined;
     if (ring) {
       ring.material =
@@ -210,7 +222,7 @@ export function createTreeFactory(): TreeFactory {
         trunkMat.emissive.setHex(SELECTED_GREEN_GLOW);
       } else {
         trunkMat.color.copy(baseColor);
-        trunkMat.emissive.setHex(0x000000);
+        trunkMat.emissive.setHex(night ? NIGHT_TRUNK_GLOW : 0x000000);
       }
     }
   }

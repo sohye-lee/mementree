@@ -24,14 +24,16 @@ import { hashStr, mulberry32 } from '@/lib/seed';
 const PAPER = 0xf4f4f1;
 const WITHER_DURATION = 1700;
 
-// sun phase → sky tint + light multiplier. kept subtle: the field stays
-// "paper" — it grades warm at dawn/dusk, cool-dim at night, never goes dark.
+// sun phase → sky tint + light multiplier. day phases stay "paper" with a
+// warm grade at dawn/dusk; night drops to a real dark sky (stars, dark
+// ground, pale trees) — see setEnvironment.
+const NIGHT_BG = 0x1a1c24;
 const PHASE_LOOK: Record<Phase, { bg: number; light: number }> = {
   dawn: { bg: 0xf1e9dd, light: 0.8 },
   morning: { bg: 0xf4f4f1, light: 1.0 },
   afternoon: { bg: 0xf4f4f1, light: 1.0 },
   dusk: { bg: 0xece0d2, light: 0.76 },
-  night: { bg: 0xc4c6cd, light: 0.55 },
+  night: { bg: NIGHT_BG, light: 0.35 },
 };
 
 const LIGHT_BASE = { hemi: 0.85, sun: 0.9, fill: 0.35 };
@@ -129,6 +131,35 @@ export function createScene(
   }
   scene.add(grid);
 
+  // night stars — a fog-immune scatter on an upper dome, shown only at night
+  const starGeo = new THREE.BufferGeometry();
+  {
+    const rng = mulberry32(0x57a21);
+    const N = 150;
+    const arr = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      const dx = rng() * 2 - 1;
+      const dy = rng() * 0.9 + 0.14;
+      const dz = rng() * 2 - 1;
+      const len = Math.hypot(dx, dy, dz) || 1;
+      arr[i * 3] = (dx / len) * 90;
+      arr[i * 3 + 1] = (dy / len) * 90;
+      arr[i * 3 + 2] = (dz / len) * 90;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  }
+  const starMat = new THREE.PointsMaterial({
+    color: 0xd8d8e2,
+    size: 2,
+    sizeAttenuation: false,
+    transparent: true,
+    opacity: 0.85,
+    fog: false,
+  });
+  const stars = new THREE.Points(starGeo, starMat);
+  stars.visible = false;
+  scene.add(stars);
+
   // lights
   const hemi = new THREE.HemisphereLight(0xffffff, 0xbab8b2, 0.85);
   scene.add(hemi);
@@ -150,6 +181,8 @@ export function createScene(
   const fallingPapers = new Set<HTMLElement>();
   let hoveredId: string | null = null;
   let activeId: string | null = null;
+  // true between local 19:00 and 05:00 — drives the dark-night look
+  let nightMode = false;
 
   function addTree(tree: SceneTree) {
     if (treeGroups.has(tree.id)) return;
@@ -163,6 +196,8 @@ export function createScene(
     treeGroups.set(tree.id, g);
     treeSeeds.set(tree.id, tree.seed);
     treeNoteGroups.set(tree.id, new Map());
+    // apply the current day/night look to the fresh tree
+    applyRingState(tree.id);
   }
 
   // sample a mesh tree (+ its notes) into a point cloud. each strided vertex
@@ -252,9 +287,9 @@ export function createScene(
   function applyRingState(id: string) {
     const g = treeGroups.get(id);
     if (!g) return;
-    if (id === activeId) treeFactory.setRingState(g, 'active');
-    else if (id === hoveredId) treeFactory.setRingState(g, 'hover');
-    else treeFactory.setRingState(g, 'base');
+    const state =
+      id === activeId ? 'active' : id === hoveredId ? 'hover' : 'base';
+    treeFactory.setRingState(g, state, nightMode);
   }
 
   function setHovered(id: string | null) {
@@ -425,6 +460,17 @@ export function createScene(
       hemi.intensity = LIGHT_BASE.hemi * look.light;
       sun.intensity = LIGHT_BASE.sun * look.light;
       fill.intensity = LIGHT_BASE.fill * look.light;
+
+      // night drops to a real dark field: dark ground, stars out, the
+      // light vignette overlay off, trees re-lit as pale silhouettes.
+      const night = phase === 'night';
+      if (night !== nightMode) {
+        nightMode = night;
+        groundMat.color.setHex(night ? 0x2a2c36 : 0xffffff);
+        vignette.visible = !night;
+        stars.visible = night;
+        for (const id of treeGroups.keys()) applyRingState(id);
+      }
     }
     // weather → rain / snow particle system (clear / cloudy / fog = none)
     if (weather !== weatherKind) {
@@ -652,6 +698,8 @@ export function createScene(
       grid.geometry.dispose();
       if (Array.isArray(gridMat)) gridMat.forEach((m) => m.dispose());
       else gridMat.dispose();
+      starGeo.dispose();
+      starMat.dispose();
       renderer.dispose();
     },
   };

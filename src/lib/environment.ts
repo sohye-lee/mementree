@@ -2,9 +2,8 @@
 // pure functions + types; the react glue lives in use-environment.ts.
 //
 // see project memory "Mementree environment system": the field should feel
-// timed to the keeper's actual place + sky.
-
-import SunCalc from 'suncalc';
+// timed to the keeper's place + sky. phase is a simple local-clock split
+// (night runs 19:00–05:00) rather than computed sunrise/sunset.
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 export type Phase = 'dawn' | 'morning' | 'afternoon' | 'dusk' | 'night';
@@ -49,34 +48,14 @@ export function resolveSeason(date: Date, lat: number): Season {
 
 // ── sun phase ─────────────────────────────────────────────────────────────────
 
-export function resolvePhase(date: Date, lat: number, lng: number): Phase {
-  const t = SunCalc.getTimes(date, lat, lng);
-  const now = date.getTime();
-  const dawn = t.dawn.getTime();
-  const sunrise = t.sunrise.getTime();
-  const noon = t.solarNoon.getTime();
-  const sunset = t.sunset.getTime();
-  const dusk = t.dusk.getTime();
-
-  // polar day/night or any NaN — fall back to a simple clock split
-  if (
-    Number.isNaN(dawn) ||
-    Number.isNaN(sunrise) ||
-    Number.isNaN(sunset) ||
-    Number.isNaN(dusk)
-  ) {
-    const h = date.getHours();
-    if (h < 6 || h >= 20) return 'night';
-    if (h < 8) return 'dawn';
-    if (h < 12) return 'morning';
-    if (h < 18) return 'afternoon';
-    return 'dusk';
-  }
-
-  if (now < dawn || now >= dusk) return 'night';
-  if (now < sunrise) return 'dawn';
-  if (now >= sunset) return 'dusk';
-  return now < noon ? 'morning' : 'afternoon';
+// phase by the viewer's local clock. night runs 19:00–05:00.
+export function resolvePhase(date: Date): Phase {
+  const h = date.getHours();
+  if (h >= 19 || h < 5) return 'night';
+  if (h < 7) return 'dawn';
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'dusk';
 }
 
 // ── weather ───────────────────────────────────────────────────────────────────

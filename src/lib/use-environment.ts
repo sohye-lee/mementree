@@ -72,11 +72,9 @@ export function useEnvironment(): Environment {
   );
 
   const phase = useMemo<Phase | null>(
-    () =>
-      mounted
-        ? resolvePhase(new Date(), location.lat, location.lng)
-        : null,
-    [mounted, location.lat, location.lng, minuteTick],
+    // local-clock phase — recomputed each minute via minuteTick
+    () => (mounted ? resolvePhase(new Date()) : null),
+    [mounted, minuteTick],
   );
 
   const requestLocation = useCallback(() => {
