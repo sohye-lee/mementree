@@ -70,6 +70,7 @@ export default async function FieldPage({ params }: PageProps) {
       viewerSignedIn={viewerSignedIn}
       handle={owner.handle as string}
       slug={field.slug as string}
+      fieldId={field.id as string}
       trees={trees}
       fallen={isKeeper ? fallen : []}
       firstTime={isKeeper && trees.length === 0}

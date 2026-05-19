@@ -44,6 +44,8 @@ interface Props {
   viewerSignedIn: boolean;
   handle: string;
   slug: string;
+  // the field being viewed — needed to plant trees into it
+  fieldId: string;
   trees: FieldTreeData[];
   fallen: FallenItem[];
   firstTime: boolean;
@@ -62,6 +64,7 @@ export function FieldChrome({
   viewerSignedIn,
   handle,
   slug,
+  fieldId,
   trees,
   fallen,
   firstTime,
@@ -305,7 +308,6 @@ export function FieldChrome({
           <PlantFab
             onClick={() => setPlantOpen(true)}
             hidden={
-              firstTime ||
               panelOpen ||
               fallenOpen ||
               shareOpen ||
@@ -316,9 +318,10 @@ export function FieldChrome({
 
           <PlantModal
             open={plantOpen}
+            fieldId={fieldId}
             fieldMode={fieldMode}
             defaultLead={defaultLead}
-            onClose={firstTime ? undefined : () => setPlantOpen(false)}
+            onClose={() => setPlantOpen(false)}
             onPlanted={(treeId) => {
               setPlantOpen(false);
               setSelectedTreeId(null);

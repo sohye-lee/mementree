@@ -1,12 +1,11 @@
 import { redirect } from 'next/navigation';
-import { FieldChrome } from '@/components/field/field-chrome';
+import { FieldsHome, type FieldsHomeItem } from '@/components/fields/fields-home';
 import { createClient } from '@/lib/db/server';
-import { loadFieldContent } from '@/lib/field-query';
 import type { FieldMode } from '@/types/domain';
 
-// the keeper's own field. `/[handle]/[slug]` serves the same view to
-// visitors; this route is the signed-in keeper's shortcut and the only
-// place a field is auto-created.
+// `/` is the keeper's hub — a picker for the fields they keep. it is not a
+// field itself; each field lives at `/{handle}/{slug}`. fields are created
+// explicitly via the new-field modal, never auto-created.
 
 export const metadata = {
   title: 'mementree',
@@ -28,46 +27,42 @@ export default async function Home() {
     .eq('id', user.id)
     .single();
 
-  let { data: field } = await supabase
+  const { data: fieldRows } = await supabase
     .from('fields')
-    .select('id, mode, slug')
+    .select('id, slug, title, mode, created_at')
     .eq('owner_id', user.id)
-    .maybeSingle();
+    .order('created_at', { ascending: true });
 
-  if (!field) {
-    const { data: created } = await supabase
-      .from('fields')
-      .insert({
-        owner_id: user.id,
-        slug: 'field',
-        title: 'field',
-        mode: null,
-      })
-      .select('id, mode, slug')
-      .single();
-    field = created;
+  const fields = fieldRows ?? [];
+
+  // living-tree counts, one query across every field
+  const counts = new Map<string, number>();
+  const ids = fields.map((f) => f.id as string);
+  if (ids.length) {
+    const { data: treeRows } = await supabase
+      .from('trees')
+      .select('field_id')
+      .in('field_id', ids)
+      .eq('state', 'living');
+    for (const r of treeRows ?? []) {
+      const fid = r.field_id as string;
+      counts.set(fid, (counts.get(fid) ?? 0) + 1);
+    }
   }
 
-  const { trees, fallen } = field
-    ? await loadFieldContent(supabase, field.id as string)
-    : { trees: [], fallen: [] };
-
-  const firstTime = trees.length === 0;
-  const fieldMode = (field?.mode ?? null) as FieldMode | null;
-  const defaultLead = profile?.display_name ?? profile?.handle ?? '';
+  const items: FieldsHomeItem[] = fields.map((f) => ({
+    id: f.id as string,
+    slug: f.slug as string,
+    title: f.title as string,
+    mode: (f.mode ?? null) as FieldMode | null,
+    treeCount: counts.get(f.id as string) ?? 0,
+  }));
 
   return (
-    <FieldChrome
-      role="keeper"
-      canMemo
-      viewerSignedIn
+    <FieldsHome
       handle={profile?.handle ?? 'keeper'}
-      slug={(field?.slug as string | undefined) ?? 'field'}
-      trees={trees}
-      fallen={fallen}
-      firstTime={firstTime}
-      fieldMode={fieldMode}
-      defaultLead={defaultLead}
+      displayName={profile?.display_name ?? profile?.handle ?? ''}
+      fields={items}
     />
   );
 }

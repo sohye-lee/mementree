@@ -5,7 +5,11 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/db/server';
 import { hashStr } from '@/lib/seed';
 import type { FieldMode } from '@/types/domain';
-import type { PlantTreeState, TieMemoState } from './action-state';
+import type {
+  CreateFieldState,
+  PlantTreeState,
+  TieMemoState,
+} from './action-state';
 
 // ─── auth ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +25,19 @@ const VALID_MODES: readonly FieldMode[] = ['project', 'wish', 'diary', 'note'];
 
 function isMode(v: unknown): v is FieldMode {
   return typeof v === 'string' && (VALID_MODES as readonly string[]).includes(v);
+}
+
+// derive a url slug from a field name: lowercase ascii words joined by hyphens.
+// non-ascii names (e.g. korean) reduce to empty — caller falls back to 'field'.
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
 }
 
 // finds an open spot for a new tree. first tree always lands at (0, -2) so the
@@ -54,18 +71,65 @@ function pickPosition(
   };
 }
 
-async function requireKeeperField() {
+// a signed-in user. ownership of any specific field/tree/memo is enforced by
+// RLS on the write — these helpers only gate on "is anyone signed in".
+async function requireUser() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data: field } = await supabase
-    .from('fields')
-    .select('id, mode')
-    .eq('owner_id', user.id)
+  return { supabase, user };
+}
+
+// ─── create field ───────────────────────────────────────────────────────────
+
+// a keeper may hold many fields — each one a different kind of keeping
+// (project / wish / diary / note). the mode is chosen here, at field
+// creation, and frozen; trees planted later inherit the field's kind.
+export async function createField(
+  _prev: CreateFieldState,
+  formData: FormData,
+): Promise<CreateFieldState> {
+  const name = String(formData.get('name') ?? '').trim();
+  const modeRaw = formData.get('mode');
+
+  if (!name) return { ok: false, error: 'nameRequired' };
+  if (!isMode(modeRaw)) return { ok: false, error: 'modeRequired' };
+
+  const ctx = await requireUser();
+  if (!ctx) return { ok: false, error: 'serverError' };
+  const { supabase, user } = ctx;
+
+  // the owner's handle forms the first url segment
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('handle')
+    .eq('id', user.id)
     .maybeSingle();
-  return field ? { supabase, user, field } : null;
+  const handle = profile?.handle as string | undefined;
+  if (!handle) return { ok: false, error: 'serverError' };
+
+  // slug must be unique within this owner — suffix on collision
+  const base = slugify(name) || 'field';
+  const { data: existingFields } = await supabase
+    .from('fields')
+    .select('slug')
+    .eq('owner_id', user.id);
+  const taken = new Set((existingFields ?? []).map((r) => r.slug as string));
+  let slug = base;
+  for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+
+  const { error } = await supabase.from('fields').insert({
+    owner_id: user.id,
+    slug,
+    title: name,
+    mode: modeRaw,
+  });
+  if (error) return { ok: false, error: 'serverError' };
+
+  revalidatePath('/');
+  redirect(`/${handle}/${slug}`);
 }
 
 // ─── plant tree ──────────────────────────────────────────────────────────────
@@ -74,28 +138,29 @@ export async function plantTree(
   _prev: PlantTreeState,
   formData: FormData,
 ): Promise<PlantTreeState> {
+  const fieldId = String(formData.get('fieldId') ?? '');
   const name = String(formData.get('name') ?? '').trim();
   const yearRaw = String(formData.get('year') ?? '').trim();
   const leadRaw = String(formData.get('lead') ?? '').trim();
   const briefRaw = String(formData.get('brief') ?? '').trim();
-  const modeRaw = formData.get('mode');
   const access = formData.get('access') === 'shared' ? 'shared' : 'public';
 
   if (!name) return { ok: false, error: 'nameRequired' };
+  if (!fieldId) return { ok: false, error: 'serverError' };
 
-  const ctx = await requireKeeperField();
+  const ctx = await requireUser();
   if (!ctx) return { ok: false, error: 'serverError' };
-  const { supabase, user, field } = ctx;
+  const { supabase, user } = ctx;
 
-  const isFirst = field.mode === null;
-  if (isFirst) {
-    if (!isMode(modeRaw)) return { ok: false, error: 'modeRequired' };
-    const { error: modeErr } = await supabase
-      .from('fields')
-      .update({ mode: modeRaw })
-      .eq('id', field.id);
-    if (modeErr) return { ok: false, error: 'serverError' };
-  }
+  // the field must belong to this user (RLS also blocks the insert, but
+  // resolving it here lets us fail cleanly instead of on a constraint).
+  const { data: field } = await supabase
+    .from('fields')
+    .select('id')
+    .eq('id', fieldId)
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if (!field) return { ok: false, error: 'serverError' };
 
   const { data: livingRows } = await supabase
     .from('trees')
@@ -140,7 +205,7 @@ export async function plantTree(
     .single();
 
   if (error || !inserted) return { ok: false, error: 'serverError' };
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { ok: true, treeId: inserted.id as string, treeName: name };
 }
 
@@ -211,9 +276,10 @@ export async function tieMemo(
 }
 
 // ─── soft delete + restore ───────────────────────────────────────────────────
+// ownership is enforced by RLS — these only require a signed-in user.
 
 export async function witherTree(treeId: string) {
-  const ctx = await requireKeeperField();
+  const ctx = await requireUser();
   if (!ctx) return;
   const { supabase } = ctx;
   await supabase
@@ -223,22 +289,22 @@ export async function witherTree(treeId: string) {
       withered_at: new Date().toISOString(),
     })
     .eq('id', treeId);
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function liftTreeBack(treeId: string) {
-  const ctx = await requireKeeperField();
+  const ctx = await requireUser();
   if (!ctx) return;
   const { supabase } = ctx;
   await supabase
     .from('trees')
     .update({ state: 'living', withered_at: null })
     .eq('id', treeId);
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function letMemoFall(memoId: string) {
-  const ctx = await requireKeeperField();
+  const ctx = await requireUser();
   if (!ctx) return;
   const { supabase } = ctx;
   await supabase
@@ -248,18 +314,18 @@ export async function letMemoFall(memoId: string) {
       fallen_at: new Date().toISOString(),
     })
     .eq('id', memoId);
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 export async function liftMemoBack(memoId: string) {
-  const ctx = await requireKeeperField();
+  const ctx = await requireUser();
   if (!ctx) return;
   const { supabase } = ctx;
   await supabase
     .from('memos')
     .update({ state: 'tied', fallen_at: null })
     .eq('id', memoId);
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }
 
 // ─── tree visibility ─────────────────────────────────────────────────────────
@@ -268,12 +334,12 @@ export async function setTreeAccess(
   treeId: string,
   access: 'public' | 'shared',
 ) {
-  const ctx = await requireKeeperField();
+  const ctx = await requireUser();
   if (!ctx) return;
   const { supabase } = ctx;
   await supabase
     .from('trees')
     .update({ access: access === 'shared' ? 'shared' : 'public' })
     .eq('id', treeId);
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
 }

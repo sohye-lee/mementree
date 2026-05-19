@@ -47,11 +47,56 @@ export const copy = {
     signOut: 'sign out',
   },
 
+  // the fields home at `/` — a keeper may keep many fields
+  fieldsHome: {
+    eyebrow: ['mementree', 'your fields'],
+    signedInAs: 'signed in as',
+    signOut: 'sign out',
+    title: 'your fields.',
+    lede: 'each field is its own kind of keeping — a project, a wish, a diary, loose notes. step into one, or plant another.',
+    treeCountSuffix: 'trees',
+    enter: 'walk in →',
+    newField: '+ plant a new field',
+    // mode → short word shown on a field card
+    modeWord: {
+      project: 'a project field',
+      wish: 'a wish field',
+      diary: 'a diary',
+      note: 'a notebook',
+    },
+    empty: {
+      eyebrow: 'no fields yet',
+      title: 'an empty horizon.',
+      lede: 'a field is a space you keep. plant your first one — and choose whether it holds projects, wishes, a diary, or loose notes.',
+      cta: 'plant your first field',
+    },
+  },
+
+  // the new-field modal — mode is chosen here, once, then frozen
+  createField: {
+    eyebrow: ['mementree', 'new field'],
+    title: 'plant a new field.',
+    lede: 'a field holds one kind of keeping.\nthe kind you choose shapes what it becomes — and it stays fixed.',
+    section1: '[ 01 ] what kind of field?',
+    section2: '[ 02 ] name the field',
+    nameLabel: 'field name',
+    namePlaceholder: 'e.g. 2026 projects',
+    submit: 'plant the field',
+    submitting: 'planting…',
+    cancel: 'cancel',
+    foot: 'the kind is fixed once chosen. the name you can rename later.',
+    errors: {
+      nameRequired: 'a name, however small.',
+      modeRequired: 'pick a kind of field.',
+      serverError: 'something held the field back. try again?',
+    },
+  },
+
   notFound: {
     code: '404',
     title: "you've wandered past the edge of the field.",
     sub: 'nothing grows out here.',
-    back: 'back to your field',
+    back: 'back to your fields',
   },
 
   toast: {
@@ -88,19 +133,7 @@ export const copy = {
     cancel: 'cancel',
     submitting: 'planting…',
 
-    // first tree (onboarding) — only shown when the field has no mode yet
-    first: {
-      eyebrow: ['mementree', '00 — empty'],
-      title: 'an empty field.',
-      lede:
-        'before anything else, plant the first tree.\nthe kind of tree you choose shapes what this field becomes.',
-      section1: '[ 01 ] what kind of tree?',
-      section2: '[ 02 ] name the first tree',
-      submit: 'plant the first tree',
-      foot: 'you can plant more whenever. the field grows with you.',
-    },
-
-    // subsequent trees — same modal, lighter framing
+    // a tree planted into a field — the field's mode is already fixed
     again: {
       // %mode% is replaced at render time
       title: 'plant a %mode%',
@@ -145,7 +178,6 @@ export const copy = {
 
     errors: {
       nameRequired: 'a name, however small.',
-      modeRequired: 'pick a kind of tree.',
       serverError: 'something held the field back. try again?',
     },
   },

@@ -1,0 +1,313 @@
+/* mementree — the fields home at `/`.
+ * a quiet picker for the fields a keeper keeps. paper grain + vignette
+ * matched to the sign-in screen so the two read as one place. */
+
+.body {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--paper) 0%, #efede5 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* paper grain */
+.body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(rgba(80, 60, 30, 0.04) 1px, transparent 1px),
+    radial-gradient(rgba(80, 60, 30, 0.03) 1px, transparent 1px);
+  background-size: 3px 3px, 7px 7px;
+  background-position: 0 0, 1px 2px;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  z-index: 1;
+}
+
+/* radial vignette */
+.body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 20%,
+    rgba(60, 55, 45, 0.1) 95%
+  );
+  z-index: 1;
+}
+
+/* topbar */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 48px;
+  border-bottom: 1px solid var(--ink-20);
+  background: color-mix(in oklch, var(--paper) 92%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.signedIn {
+  color: var(--ink-50);
+}
+
+.who {
+  color: var(--ink);
+}
+
+.signOut {
+  appearance: none;
+  border: 1px solid var(--ink-20);
+  background: transparent;
+  color: var(--ink-70);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition: border-color 140ms, color 140ms;
+}
+
+.signOut:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* stage */
+.stage {
+  position: relative;
+  z-index: 2;
+  min-height: calc(100% - 48px);
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  padding: 64px 28px 80px;
+}
+
+.inner {
+  width: 100%;
+  max-width: 720px;
+}
+
+/* heading */
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-50);
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 22px;
+}
+
+.eyebrowDim {
+  color: var(--ink-30);
+}
+
+.title {
+  font-family: var(--sans);
+  font-size: 44px;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+  text-transform: lowercase;
+  margin: 0 0 14px;
+  color: var(--ink);
+}
+
+.lede {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-70);
+  max-width: 460px;
+  margin: 0 0 36px;
+  white-space: pre-line;
+}
+
+/* field grid */
+.grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 14px;
+}
+
+.grid > li {
+  display: flex;
+}
+
+/* a field card */
+.card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 168px;
+  padding: 20px;
+  border: 1px solid var(--ink-20);
+  background: var(--paper);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 160ms, background 160ms, transform 160ms;
+}
+
+.card:hover {
+  border-color: var(--ink);
+  background: #fffffd;
+  transform: translateY(-2px);
+}
+
+.cardGlyph {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink-50);
+  margin-bottom: 18px;
+}
+
+.card:hover .cardGlyph {
+  color: var(--green);
+}
+
+.cardTitle {
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: lowercase;
+  color: var(--ink);
+  margin-bottom: 5px;
+  word-break: break-word;
+}
+
+.cardMeta {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink-50);
+}
+
+.cardEnter {
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-30);
+  transition: color 160ms;
+}
+
+.card:hover .cardEnter {
+  color: var(--green);
+}
+
+/* the dashed "new field" tile */
+.newCard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 168px;
+  padding: 20px;
+  border: 1px dashed var(--ink-30);
+  background: transparent;
+  font: inherit;
+  color: var(--ink-50);
+  cursor: pointer;
+  transition: border-color 160ms, color 160ms, background 160ms;
+}
+
+.newCard:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: color-mix(in oklch, var(--paper) 92%, var(--green) 8%);
+}
+
+.newGlyph {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.newLabel {
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+/* empty state */
+.emptyBlock {
+  text-align: left;
+}
+
+.emptyBlock .title {
+  font-size: 52px;
+}
+
+.ctaBtn {
+  appearance: none;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  padding: 13px 20px;
+  cursor: pointer;
+  transition: background 160ms, color 160ms;
+}
+
+.ctaBtn:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* mobile */
+@media (max-width: 640px) {
+  .stage {
+    padding: 40px 18px 64px;
+  }
+  .title {
+    font-size: 34px;
+  }
+  .emptyBlock .title {
+    font-size: 38px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .signedIn {
+    display: none;
+  }
+}
